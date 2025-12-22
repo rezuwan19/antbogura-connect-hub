@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, X } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface ConnectionRequestDialogProps {
@@ -17,6 +24,21 @@ interface ConnectionRequestDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedPackage?: string;
 }
+
+const UPAZILAS = [
+  "Adamdighi",
+  "Bogra Sadar",
+  "Dhunat",
+  "Dhupchanchia",
+  "Gabtali",
+  "Kahalu",
+  "Nandigram",
+  "Shajahanpur",
+  "Shibganj",
+  "Sherpur",
+  "Sariakandi",
+  "Sonatala",
+];
 
 const ConnectionRequestDialog = ({
   open,
@@ -27,6 +49,8 @@ const ConnectionRequestDialog = ({
     name: "",
     phone: "",
     email: "",
+    district: "Bogura",
+    upazila: "",
     address: "",
     message: "",
   });
@@ -43,6 +67,8 @@ const ConnectionRequestDialog = ({
         name: "",
         phone: "",
         email: "",
+        district: "Bogura",
+        upazila: "",
         address: "",
         message: "",
       });
@@ -119,6 +145,45 @@ const ConnectionRequestDialog = ({
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                District *
+              </label>
+              <Select
+                value={formData.district}
+                onValueChange={(value) => setFormData({ ...formData, district: value })}
+              >
+                <SelectTrigger className="bg-card border-border">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Bogura">Bogura</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Upazila/Thana *
+              </label>
+              <Select
+                value={formData.upazila}
+                onValueChange={(value) => setFormData({ ...formData, upazila: value })}
+              >
+                <SelectTrigger className="bg-card border-border">
+                  <SelectValue placeholder="Select Upazila" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UPAZILAS.map((upazila) => (
+                    <SelectItem key={upazila} value={upazila}>
+                      {upazila}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               Full Address *
@@ -127,7 +192,7 @@ const ConnectionRequestDialog = ({
               name="address"
               value={formData.address}
               onChange={handleChange}
-              placeholder="House, Road, Area, Bogura"
+              placeholder="House, Road, Area"
               required
               className="bg-card border-border"
             />
