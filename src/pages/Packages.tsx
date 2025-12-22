@@ -79,11 +79,11 @@ const Packages = () => {
                 <CardContent className="text-center">
                   <div className="mb-6">
                     <p className="text-3xl font-bold text-foreground">
-                      ৳{pkg.price}
+                      ৳{pkg.vat}
                       <span className="text-sm text-muted-foreground font-normal">/month</span>
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      ৳{pkg.vat} with 5% VAT
+                    <p className="text-sm text-primary font-medium">
+                      VAT Included
                     </p>
                   </div>
 
@@ -126,8 +126,7 @@ const Packages = () => {
                 <tr className="bg-primary text-primary-foreground">
                   <th className="px-6 py-4 text-left font-semibold">Package</th>
                   <th className="px-6 py-4 text-center font-semibold">Speed</th>
-                  <th className="px-6 py-4 text-center font-semibold">Price</th>
-                  <th className="px-6 py-4 text-center font-semibold">Price (5% VAT)</th>
+                  <th className="px-6 py-4 text-center font-semibold">Price (VAT Included)</th>
                   <th className="px-6 py-4 text-center font-semibold">Action</th>
                 </tr>
               </thead>
@@ -152,8 +151,7 @@ const Packages = () => {
                     <td className="px-6 py-4 text-center">
                       <span className="font-semibold text-primary">{pkg.speed} Mbps</span>
                     </td>
-                    <td className="px-6 py-4 text-center text-foreground">৳{pkg.price}</td>
-                    <td className="px-6 py-4 text-center text-foreground">৳{pkg.vat}</td>
+                    <td className="px-6 py-4 text-center text-foreground font-medium">৳{pkg.vat}</td>
                     <td className="px-6 py-4 text-center">
                       <Button asChild variant="default" size="sm">
                         <Link to="/contact">Order Now</Link>
