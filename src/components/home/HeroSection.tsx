@@ -1,6 +1,14 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Wifi, Zap, Tv, Gamepad2, Shield, Clock } from "lucide-react";
+import { ArrowRight, Wifi, Zap, Tv, Gamepad2, Shield, Clock, Package, MapPin, Users, Headphones, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const pages = [
+  { name: "Packages", path: "/packages", icon: Package, description: "View our internet plans & pricing" },
+  { name: "Coverage", path: "/coverage", icon: MapPin, description: "Check service availability in your area" },
+  { name: "About Us", path: "/about", icon: Users, description: "Learn about ANT Bogura" },
+  { name: "Support", path: "/support", icon: Headphones, description: "Get help & troubleshooting" },
+  { name: "Contact", path: "/contact", icon: Mail, description: "Request a new connection" },
+];
 
 const features = [
   {
@@ -188,6 +196,39 @@ const HeroSection = () => {
               <div className="absolute -top-4 -right-4 w-24 h-24 bg-mint rounded-2xl -z-10" />
               <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-cream rounded-2xl -z-10" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Explore Pages Section */}
+      <section className="section-padding bg-card">
+        <div className="container-custom mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Explore Our Website
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Find everything you need - from pricing to support
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {pages.map((page, index) => (
+              <Link
+                key={page.path}
+                to={page.path}
+                className="group p-6 bg-background rounded-2xl border border-border hover:border-primary/30 hover:shadow-xl transition-all duration-300 text-center animate-fade-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary group-hover:scale-110 transition-all duration-300">
+                  <page.icon className="w-7 h-7 text-primary group-hover:text-primary-foreground transition-colors" />
+                </div>
+                <h3 className="font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                  {page.name}
+                </h3>
+                <p className="text-xs text-muted-foreground">{page.description}</p>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
