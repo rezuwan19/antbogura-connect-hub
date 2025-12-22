@@ -1,28 +1,67 @@
+import { useState } from "react";
 import { MapPin, CheckCircle } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-
-const coverageAreas = [
-  "Satmatha",
-  "Borogola",
-  "Thana Road",
-  "College Para",
-  "Hospital Para",
-  "Jhawtala",
-  "Char Para",
-  "Khalifa More",
-  "Rangpur Road",
-  "Banani",
-  "Sunflower Para",
-  "Kabi Nazrul Islam Street",
-  "BSCIC Industrial Area",
-  "Sherpur Road Area",
-  "Railway Station Area",
-  "Bus Terminal Area",
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+const UPAZILAS = [
+  "Adamdighi",
+  "Bogra Sadar",
+  "Dhunat",
+  "Dhupchanchia",
+  "Gabtali",
+  "Kahalu",
+  "Nandigram",
+  "Shajahanpur",
+  "Shibganj",
+  "Sherpur",
+  "Sariakandi",
+  "Sonatala",
 ];
 
+const coverageAreas: Record<string, string[]> = {
+  "Bogra Sadar": [
+    "Satmatha",
+    "Borogola",
+    "Thana Road",
+    "College Para",
+    "Hospital Para",
+    "Jhawtala",
+    "Char Para",
+    "Khalifa More",
+    "Rangpur Road",
+    "Banani",
+    "Sunflower Para",
+    "Kabi Nazrul Islam Street",
+    "BSCIC Industrial Area",
+    "Sherpur Road Area",
+    "Railway Station Area",
+    "Bus Terminal Area",
+  ],
+  "Adamdighi": [],
+  "Dhunat": [],
+  "Dhupchanchia": [],
+  "Gabtali": [],
+  "Kahalu": [],
+  "Nandigram": [],
+  "Shajahanpur": [],
+  "Shibganj": [],
+  "Sherpur": [],
+  "Sariakandi": [],
+  "Sonatala": [],
+};
 const Coverage = () => {
+  const [selectedDistrict, setSelectedDistrict] = useState("Bogura");
+  const [selectedUpazila, setSelectedUpazila] = useState("Bogra Sadar");
+
+  const currentAreas = coverageAreas[selectedUpazila] || [];
+
   return (
     <Layout>
       {/* Hero */}
@@ -38,6 +77,50 @@ const Coverage = () => {
         </div>
       </section>
 
+      {/* Location Selector */}
+      <section className="section-padding bg-background pb-0">
+        <div className="container-custom mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                District
+              </label>
+              <Select
+                value={selectedDistrict}
+                onValueChange={setSelectedDistrict}
+              >
+                <SelectTrigger className="bg-card border-border">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Bogura">Bogura</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Upazila/Thana
+              </label>
+              <Select
+                value={selectedUpazila}
+                onValueChange={setSelectedUpazila}
+              >
+                <SelectTrigger className="bg-card border-border">
+                  <SelectValue placeholder="Select Upazila" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UPAZILAS.map((upazila) => (
+                    <SelectItem key={upazila} value={upazila}>
+                      {upazila}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Map Section */}
       <section className="section-padding bg-background">
         <div className="container-custom mx-auto">
@@ -46,7 +129,7 @@ const Coverage = () => {
             <div className="animate-fade-in">
               <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <MapPin className="w-6 h-6 text-primary" />
-                Bogura City Coverage
+                {selectedUpazila} Coverage
               </h2>
               <div className="aspect-video bg-card rounded-2xl overflow-hidden border border-border shadow-lg">
                 <iframe
@@ -68,20 +151,29 @@ const Coverage = () => {
             {/* Area List */}
             <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <h2 className="text-2xl font-bold text-foreground mb-6">
-                Covered Areas
+                Covered Areas in {selectedUpazila}
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {coverageAreas.map((area, index) => (
-                  <div
-                    key={area}
-                    className="flex items-center gap-3 bg-card p-4 rounded-xl border border-border hover:border-primary/30 transition-all"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                    <span className="text-foreground">{area}</span>
-                  </div>
-                ))}
-              </div>
+              
+              {currentAreas.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {currentAreas.map((area, index) => (
+                    <div
+                      key={area}
+                      className="flex items-center gap-3 bg-card p-4 rounded-xl border border-border hover:border-primary/30 transition-all"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="text-foreground">{area}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-muted/50 p-8 rounded-2xl text-center border border-border">
+                  <p className="text-muted-foreground">
+                    Coverage coming soon to {selectedUpazila}. Contact us to express interest.
+                  </p>
+                </div>
+              )}
 
               <div className="mt-8 p-6 bg-primary/5 rounded-2xl border border-primary/20">
                 <h3 className="font-semibold text-foreground mb-2">
