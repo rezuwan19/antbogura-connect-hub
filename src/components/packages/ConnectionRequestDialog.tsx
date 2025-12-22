@@ -1,0 +1,181 @@
+import { useState } from "react";
+import { Send, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+interface ConnectionRequestDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedPackage?: string;
+}
+
+const ConnectionRequestDialog = ({
+  open,
+  onOpenChange,
+  selectedPackage,
+}: ConnectionRequestDialogProps) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // Simulate submission
+    setTimeout(() => {
+      toast.success("Connection request submitted successfully! We'll contact you soon.");
+      setFormData({
+        name: "",
+        phone: "",
+        email: "",
+        address: "",
+        message: "",
+      });
+      setIsSubmitting(false);
+      onOpenChange(false);
+    }, 1000);
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] bg-background border-border">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-foreground">
+            Request New Connection
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            {selectedPackage ? (
+              <>
+                You selected: <span className="font-semibold text-primary">{selectedPackage}</span>
+              </>
+            ) : (
+              "Fill out the form below and we'll get back to you within 24 hours."
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Full Name *
+              </label>
+              <Input
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Your full name"
+                required
+                className="bg-card border-border"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Phone Number *
+              </label>
+              <Input
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="01xxxxxxxxx"
+                required
+                className="bg-card border-border"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Email Address
+            </label>
+            <Input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="your@email.com"
+              className="bg-card border-border"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Full Address *
+            </label>
+            <Input
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="House, Road, Area, Bogura"
+              required
+              className="bg-card border-border"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Additional Message
+            </label>
+            <Textarea
+              name="message"
+              value={formData.message}
+              onChange={handleChange}
+              placeholder="Any specific requirements..."
+              rows={3}
+              className="bg-card border-border resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="hero"
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? (
+                "Submitting..."
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Submit Request
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ConnectionRequestDialog;

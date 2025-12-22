@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Check, Zap, Star } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import ConnectionRequestDialog from "@/components/packages/ConnectionRequestDialog";
 
 const packages = [
   { name: "Home Connect", speed: 25, price: 500, vat: 525 },
@@ -26,6 +27,14 @@ const features = [
 ];
 
 const Packages = () => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<string | undefined>();
+
+  const handleOrderClick = (packageName: string) => {
+    setSelectedPackage(`${packageName}`);
+    setDialogOpen(true);
+  };
+
   return (
     <Layout>
       {/* Hero */}
@@ -99,12 +108,12 @@ const Packages = () => {
 
                 <CardFooter>
                   <Button
-                    asChild
                     variant={pkg.popular ? "hero" : "outline"}
                     className="w-full"
                     size="lg"
+                    onClick={() => handleOrderClick(`${pkg.name} - ${pkg.speed} Mbps - ৳${pkg.vat}/month`)}
                   >
-                    <Link to="/contact">Get Started</Link>
+                    Get Started
                   </Button>
                 </CardFooter>
               </Card>
@@ -131,7 +140,7 @@ const Packages = () => {
                 </tr>
               </thead>
               <tbody>
-                {packages.map((pkg, index) => (
+                {packages.map((pkg) => (
                   <tr
                     key={pkg.name}
                     className={`border-b border-border hover:bg-accent/50 transition-colors ${
@@ -153,8 +162,12 @@ const Packages = () => {
                     </td>
                     <td className="px-6 py-4 text-center text-foreground font-medium">৳{pkg.vat}</td>
                     <td className="px-6 py-4 text-center">
-                      <Button asChild variant="default" size="sm">
-                        <Link to="/contact">Order Now</Link>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleOrderClick(`${pkg.name} - ${pkg.speed} Mbps - ৳${pkg.vat}/month`)}
+                      >
+                        Order Now
                       </Button>
                     </td>
                   </tr>
@@ -182,6 +195,13 @@ const Packages = () => {
           </Button>
         </div>
       </section>
+
+      {/* Connection Request Dialog */}
+      <ConnectionRequestDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        selectedPackage={selectedPackage}
+      />
     </Layout>
   );
 };
