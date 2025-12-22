@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Mail, MapPin, MessageCircle, Send, Clock, Wifi, AlertTriangle } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle, Send, Clock, Wifi, AlertTriangle, Github } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +137,21 @@ const Contact = () => {
                     <p className="text-muted-foreground">Bogura, Bangladesh</p>
                   </div>
                 </div>
+
+                <a
+                  href="https://github.com/antbogura"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-5 bg-card rounded-xl border border-border hover:border-foreground hover:shadow-lg transition-all group"
+                >
+                  <div className="w-14 h-14 bg-foreground/10 rounded-xl flex items-center justify-center group-hover:bg-foreground transition-colors">
+                    <Github className="w-7 h-7 text-foreground group-hover:text-background transition-colors" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">GitHub</p>
+                    <p className="text-muted-foreground">github.com/antbogura</p>
+                  </div>
+                </a>
 
                 <div className="flex items-center gap-4 p-5 bg-card rounded-xl border border-border">
                   <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
