@@ -94,18 +94,10 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-primary-foreground/20">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex justify-center items-center">
             <p className="text-sm text-primary-foreground/70">
               © {new Date().getFullYear()} ANT Bogura. All rights reserved.
             </p>
-            <div className="flex gap-6 text-sm text-primary-foreground/70">
-              <Link to="/privacy" className="hover:text-primary-foreground transition-colors">
-                Privacy Policy
-              </Link>
-              <Link to="/terms" className="hover:text-primary-foreground transition-colors">
-                Terms of Service
-              </Link>
-            </div>
           </div>
         </div>
       </div>

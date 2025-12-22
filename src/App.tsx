@@ -6,6 +6,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Packages from "./pages/Packages";
 import Coverage from "./pages/Coverage";
+import FtpLiveTv from "./pages/FtpLiveTv";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Support from "./pages/Support";
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/packages" element={<Packages />} />
           <Route path="/coverage" element={<Coverage />} />
+          <Route path="/ftp-live-tv" element={<FtpLiveTv />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/support" element={<Support />} />
