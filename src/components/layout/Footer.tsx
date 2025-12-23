@@ -95,17 +95,14 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-primary-foreground/20">
           <div className="flex justify-center items-center">
-            <p className="text-sm text-primary-foreground/70">
-              © {new Date().getFullYear()} ANT Bogura. All rights reserved. | Developed by{" "}
-              <a
-                href="https://rezuwan19.dev/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-foreground hover:underline"
-              >
-                Rezuwan
-              </a>
-            </p>
+            <a
+              href="https://rezuwan19.dev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+            >
+              © {new Date().getFullYear()} ANT Bogura. All rights reserved. | Developed by Rezuwan
+            </a>
           </div>
         </div>
       </div>
