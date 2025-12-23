@@ -129,7 +129,7 @@ const Coverage = () => {
             <div className="animate-fade-in">
               <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <MapPin className="w-6 h-6 text-primary" />
-                {selectedUpazila} Coverage
+                {selectedDistrict} District Coverage
               </h2>
               <div className="aspect-video bg-card rounded-2xl overflow-hidden border border-border shadow-lg">
                 <iframe
@@ -151,7 +151,7 @@ const Coverage = () => {
             {/* Area List */}
             <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <h2 className="text-2xl font-bold text-foreground mb-6">
-                Covered Areas in {selectedUpazila}
+                Covered Thana in {selectedUpazila}
               </h2>
               
               {currentAreas.length > 0 ? (
