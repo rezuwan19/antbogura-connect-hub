@@ -96,7 +96,15 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-primary-foreground/20">
           <div className="flex justify-center items-center">
             <p className="text-sm text-primary-foreground/70">
-              © {new Date().getFullYear()} ANT Bogura. All rights reserved.
+              © {new Date().getFullYear()} ANT Bogura. All rights reserved. | Developed by{" "}
+              <a
+                href="https://rezuwan19.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-foreground hover:underline"
+              >
+                Rezuwan
+              </a>
             </p>
           </div>
         </div>
