@@ -102,12 +102,12 @@ const ConnectionRequests = () => {
 
       if (error) throw error;
 
-      // Send SMS notification
-      await sendStatusSms(phone, status, id);
+      // Send SMS notification (fire-and-forget)
+      void sendStatusSms(phone, status, id);
 
       toast({
         title: "Status Updated",
-        description: `Request status changed to ${status}. SMS sent to customer.`,
+        description: `Request status changed to ${status}.`,
       });
 
       fetchRequests();

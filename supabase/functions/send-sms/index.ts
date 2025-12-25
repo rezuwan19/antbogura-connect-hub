@@ -47,23 +47,52 @@ const handler = async (req: Request): Promise<Response> => {
     // BulkSMS BD API call
     const apiUrl = `http://bulksmsbd.net/api/smsapi?api_key=${apiKey}&type=text&number=${formattedPhone}&senderid=${senderId}&message=${encodeURIComponent(message)}`;
     console.log("Calling BulkSMS API:", apiUrl.replace(apiKey, "***"));
-    
-    const smsResponse = await fetch(apiUrl, { method: "GET" });
+
+    // Prevent slow submissions if the SMS provider is slow/down
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const smsResponse = await fetch(apiUrl, { method: "GET", signal: controller.signal }).finally(() =>
+      clearTimeout(timeoutId)
+    );
 
     const smsResult = await smsResponse.text();
     console.log("BulkSMS Response:", smsResult);
 
-    // Update sms_sent flag in database if recordId provided
+    // Detect success/failure from provider response
+    let providerJson: any = null;
+    try {
+      providerJson = JSON.parse(smsResult);
+    } catch {
+      // ignore (provider may return plain text)
+    }
+
+    const responseCode = providerJson?.response_code;
+    const providerError = providerJson?.error_message;
+
+    // BulkSMSBD typically returns response_code 202 for success; treat everything else as failure
+    const isSuccess = responseCode === 202 || responseCode === "202" || smsResponse.ok;
+
+    if (!isSuccess) {
+      console.error("SMS provider rejected request:", providerError || smsResult);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: providerError || "SMS provider error",
+          response: providerJson ?? smsResult,
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Update sms_sent flag in database only when the SMS actually succeeded
     if (recordId && tableName) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseKey);
 
-      await supabase
-        .from(tableName)
-        .update({ sms_sent: true })
-        .eq("id", recordId);
-      
+      await supabase.from(tableName).update({ sms_sent: true }).eq("id", recordId);
+
       console.log(`Updated sms_sent flag for ${tableName}/${recordId}`);
     }
 
