@@ -99,8 +99,8 @@ const ConnectionRequestDialog = ({
 
       if (error) throw error;
 
-      // Send SMS to customer
-      await sendSms(
+      // Send SMS to customer (fire-and-forget so submit stays fast)
+      void sendSms(
         formData.phone,
         `ধন্যবাদ ${formData.name}! আপনার কানেকশন রিকোয়েস্ট পেয়েছি${selectedPackage ? ` (${selectedPackage})` : ""}। ২৪ ঘন্টার মধ্যে যোগাযোগ করব। - ANT Bogura`,
         recordId

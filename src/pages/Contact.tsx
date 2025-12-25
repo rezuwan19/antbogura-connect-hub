@@ -64,8 +64,8 @@ const Contact = () => {
 
       if (error) throw error;
 
-      // Send SMS to customer
-      await sendSms(
+      // Send SMS to customer (fire-and-forget so the form stays fast)
+      void sendSms(
         simpleFormData.phone,
         `ধন্যবাদ ${simpleFormData.name}! আপনার মেসেজ পেয়েছি। শীঘ্রই যোগাযোগ করব। - ANT Bogura`,
         recordId,
@@ -113,8 +113,8 @@ const Contact = () => {
 
       if (error) throw error;
 
-      // Send SMS to customer
-      await sendSms(
+      // Send SMS to customer (fire-and-forget so the form stays fast)
+      void sendSms(
         problemFormData.phone,
         `${problemFormData.name}, আপনার সমস্যা রিপোর্ট পেয়েছি। আমাদের টিম শীঘ্রই সমাধান করবে। - ANT Bogura`,
         recordId,
