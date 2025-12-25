@@ -18,6 +18,7 @@ import ConnectionRequests from "./pages/admin/ConnectionRequests";
 import ContactMessages from "./pages/admin/ContactMessages";
 import ProblemReports from "./pages/admin/ProblemReports";
 import AdminSettings from "./pages/admin/Settings";
+import ActivityLogs from "./pages/admin/ActivityLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,6 +76,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/activity-logs"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <ActivityLogs />
                 </ProtectedRoute>
               }
             />
