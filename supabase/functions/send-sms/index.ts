@@ -45,10 +45,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // BulkSMS BD API call
-    const smsResponse = await fetch(
-      `https://bulksmsbd.net/api/smsapi?api_key=${apiKey}&type=text&number=${formattedPhone}&senderid=${senderId}&message=${encodeURIComponent(message)}`,
-      { method: "GET" }
-    );
+    const apiUrl = `http://bulksmsbd.net/api/smsapi?api_key=${apiKey}&type=text&number=${formattedPhone}&senderid=${senderId}&message=${encodeURIComponent(message)}`;
+    console.log("Calling BulkSMS API:", apiUrl.replace(apiKey, "***"));
+    
+    const smsResponse = await fetch(apiUrl, { method: "GET" });
 
     const smsResult = await smsResponse.text();
     console.log("BulkSMS Response:", smsResult);
