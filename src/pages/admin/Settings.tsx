@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, UserPlus, Key, Mail, Smartphone, Trash2, Shield, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2, UserPlus, Key, Mail, Smartphone, Trash2, Shield, ShieldCheck, ShieldOff, Laptop } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 import TwoFactorSetup from "@/components/auth/TwoFactorSetup";
+import { RecoveryCodesManager } from "@/components/auth/RecoveryCodes";
+import { logActivity } from "@/lib/activity-logger";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +24,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 
 type DeviceSession = Tables<"device_sessions">;
+type TrustedDevice = Tables<"trusted_devices">;
 
 interface MfaFactor {
   id: string;
@@ -60,6 +64,10 @@ const Settings = () => {
   const [showDisableDialog, setShowDisableDialog] = useState(false);
   const [isDisabling, setIsDisabling] = useState(false);
 
+  // Trusted Devices State
+  const [trustedDevices, setTrustedDevices] = useState<TrustedDevice[]>([]);
+  const [isLoadingTrusted, setIsLoadingTrusted] = useState(true);
+
   const fetchSessions = async () => {
     if (!user) return;
     try {
@@ -90,10 +98,29 @@ const Settings = () => {
     }
   }, []);
 
+  const fetchTrustedDevices = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("trusted_devices")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTrustedDevices(data || []);
+    } catch (error) {
+      console.error("Error fetching trusted devices:", error);
+    } finally {
+      setIsLoadingTrusted(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchSessions();
     fetchMfaFactors();
-  }, [user, fetchMfaFactors]);
+    fetchTrustedDevices();
+  }, [user, fetchMfaFactors, fetchTrustedDevices]);
 
   const handleDisableMfa = async () => {
     setIsDisabling(true);
@@ -125,6 +152,26 @@ const Settings = () => {
   const handleSetupComplete = () => {
     setShowSetup(false);
     fetchMfaFactors();
+  };
+
+  const handleRemoveTrustedDevice = async (deviceId: string) => {
+    try {
+      const { error } = await supabase.from("trusted_devices").delete().eq("id", deviceId);
+      if (error) throw error;
+
+      if (user) {
+        await logActivity({
+          userId: user.id,
+          eventType: "device_removed",
+          description: "Removed a trusted device",
+        });
+      }
+
+      toast({ title: "Success", description: "Trusted device removed" });
+      fetchTrustedDevices();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to remove device" });
+    }
   };
 
   // Track current device session
@@ -596,74 +643,110 @@ const Settings = () => {
           </TabsContent>
 
           {/* Security / 2FA */}
-          <TabsContent value="security">
+          <TabsContent value="security" className="space-y-6">
             {showSetup ? (
               <TwoFactorSetup
                 onComplete={handleSetupComplete}
                 onCancel={() => setShowSetup(false)}
               />
             ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Shield className="w-5 h-5" />
-                    Two-Factor Authentication
-                  </CardTitle>
-                  <CardDescription>
-                    Add an extra layer of security using an authenticator app
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingMfa ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : mfaFactors.length > 0 ? (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                        <ShieldCheck className="w-8 h-8 text-green-600" />
-                        <div>
-                          <p className="font-medium text-green-600">2FA is Enabled</p>
-                          <p className="text-sm text-muted-foreground">
-                            Your account is protected with an authenticator app
-                          </p>
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5" />
+                      Two-Factor Authentication
+                    </CardTitle>
+                    <CardDescription>
+                      Add an extra layer of security using an authenticator app
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingMfa ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      </div>
+                    ) : mfaFactors.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                          <ShieldCheck className="w-8 h-8 text-green-600" />
+                          <div>
+                            <p className="font-medium text-green-600">2FA is Enabled</p>
+                            <p className="text-sm text-muted-foreground">
+                              Your account is protected with an authenticator app
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          Enrolled factor: {mfaFactors[0]?.friendly_name || "Authenticator App"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Added: {format(new Date(mfaFactors[0]?.created_at), "PPp")}
-                        </p>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        onClick={() => setShowDisableDialog(true)}
-                      >
-                        <ShieldOff className="w-4 h-4 mr-2" />
-                        Disable 2FA
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                        <Shield className="w-8 h-8 text-yellow-600" />
+                        <Separator />
                         <div>
-                          <p className="font-medium text-yellow-600">2FA is Not Enabled</p>
-                          <p className="text-sm text-muted-foreground">
-                            Enable two-factor authentication for better security
-                          </p>
+                          <h4 className="font-medium mb-2">Recovery Codes</h4>
+                          <RecoveryCodesManager />
                         </div>
+                        <Separator />
+                        <Button variant="destructive" onClick={() => setShowDisableDialog(true)}>
+                          <ShieldOff className="w-4 h-4 mr-2" />
+                          Disable 2FA
+                        </Button>
                       </div>
-                      <Button onClick={() => setShowSetup(true)}>
-                        <ShieldCheck className="w-4 h-4 mr-2" />
-                        Enable 2FA
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                          <Shield className="w-8 h-8 text-yellow-600" />
+                          <div>
+                            <p className="font-medium text-yellow-600">2FA is Not Enabled</p>
+                            <p className="text-sm text-muted-foreground">
+                              Enable two-factor authentication for better security
+                            </p>
+                          </div>
+                        </div>
+                        <Button onClick={() => setShowSetup(true)}>
+                          <ShieldCheck className="w-4 h-4 mr-2" />
+                          Enable 2FA
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Trusted Devices */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Laptop className="w-5 h-5" />
+                      Trusted Devices
+                    </CardTitle>
+                    <CardDescription>
+                      Devices that can skip 2FA verification for 30 days
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingTrusted ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                      </div>
+                    ) : trustedDevices.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-4">No trusted devices</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {trustedDevices.map((device) => (
+                          <div key={device.id} className="flex items-center justify-between p-3 rounded-lg border">
+                            <div>
+                              <p className="font-medium">{device.device_name}</p>
+                              <p className="text-sm text-muted-foreground">{device.browser} on {device.os}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Expires: {format(new Date(device.expires_at), "PP")}
+                              </p>
+                            </div>
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveTrustedDevice(device.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
             )}
           </TabsContent>
         </Tabs>

@@ -9,11 +9,13 @@ import {
   LogOut, 
   Menu,
   X,
-  Settings 
+  Settings,
+  History
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { logActivity } from "@/lib/activity-logger";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -24,6 +26,7 @@ const navItems = [
   { path: "/admin/connection-requests", label: "Connection Requests", icon: Cable },
   { path: "/admin/contact-messages", label: "Contact Messages", icon: MessageSquare },
   { path: "/admin/problem-reports", label: "Problem Reports", icon: AlertTriangle },
+  { path: "/admin/activity-logs", label: "Activity Logs", icon: History },
   { path: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -34,6 +37,13 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const { signOut, user } = useAuth();
 
   const handleLogout = async () => {
+    if (user) {
+      await logActivity({
+        userId: user.id,
+        eventType: "logout",
+        description: "User logged out",
+      });
+    }
     await signOut();
     navigate("/login");
   };

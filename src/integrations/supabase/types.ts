@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          created_at: string
+          description: string
+          event_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       connection_requests: {
         Row: {
           address: string | null
@@ -170,6 +203,66 @@ export type Database = {
           sms_sent?: boolean | null
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used: boolean | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used?: boolean | null
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used?: boolean | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trusted_devices: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_name: string
+          device_token: string
+          expires_at: string
+          id: string
+          os: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_name: string
+          device_token: string
+          expires_at: string
+          id?: string
+          os?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_name?: string
+          device_token?: string
+          expires_at?: string
+          id?: string
+          os?: string | null
+          user_id?: string
         }
         Relationships: []
       }

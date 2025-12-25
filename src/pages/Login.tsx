@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import TwoFactorVerify from "@/components/auth/TwoFactorVerify";
+import { checkTrustedDevice } from "@/components/auth/TrustedDevicePrompt";
+import { logActivity } from "@/lib/activity-logger";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -24,6 +26,7 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [requiresMfa, setRequiresMfa] = useState(false);
+  const [mfaUserId, setMfaUserId] = useState<string | null>(null);
   const { signIn, user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -57,6 +60,15 @@ const Login = () => {
       return;
     }
 
+    // Get current user to check MFA
+    const { data: sessionData } = await supabase.auth.getSession();
+    const currentUser = sessionData?.session?.user;
+    
+    if (!currentUser) {
+      setIsSubmitting(false);
+      return;
+    }
+
     // Check if MFA is required
     const { data: assuranceData, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     
@@ -70,12 +82,39 @@ const Login = () => {
       return;
     }
 
-    // If next level is aal2, MFA is required
+    // If MFA is required (user has MFA enrolled)
     if (assuranceData.nextLevel === "aal2" && assuranceData.currentLevel === "aal1") {
+      // Check if this is a trusted device
+      const isTrusted = await checkTrustedDevice(currentUser.id);
+      
+      if (isTrusted) {
+        // Skip MFA for trusted device
+        await logActivity({
+          userId: currentUser.id,
+          eventType: "login",
+          description: "Logged in (2FA skipped - trusted device)",
+        });
+        
+        setIsSubmitting(false);
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully.",
+        });
+        return;
+      }
+
+      setMfaUserId(currentUser.id);
       setRequiresMfa(true);
       setIsSubmitting(false);
       return;
     }
+
+    // No MFA required - log activity
+    await logActivity({
+      userId: currentUser.id,
+      eventType: "login",
+      description: "Logged in successfully",
+    });
 
     setIsSubmitting(false);
     toast({
@@ -86,6 +125,7 @@ const Login = () => {
 
   const handleMfaSuccess = () => {
     setRequiresMfa(false);
+    setMfaUserId(null);
     toast({
       title: "Welcome back!",
       description: "You have been logged in successfully.",
@@ -95,6 +135,7 @@ const Login = () => {
   const handleMfaCancel = async () => {
     await supabase.auth.signOut();
     setRequiresMfa(false);
+    setMfaUserId(null);
     loginForm.reset();
   };
 
@@ -107,10 +148,14 @@ const Login = () => {
   }
 
   // Show MFA verification screen if required
-  if (requiresMfa) {
+  if (requiresMfa && mfaUserId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-        <TwoFactorVerify onSuccess={handleMfaSuccess} onCancel={handleMfaCancel} />
+        <TwoFactorVerify 
+          userId={mfaUserId} 
+          onSuccess={handleMfaSuccess} 
+          onCancel={handleMfaCancel} 
+        />
       </div>
     );
   }
