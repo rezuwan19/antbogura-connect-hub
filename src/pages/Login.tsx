@@ -5,11 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2, Wifi, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import TwoFactorVerify from "@/components/auth/TwoFactorVerify";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -21,6 +23,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [requiresMfa, setRequiresMfa] = useState(false);
   const { signIn, user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -31,38 +34,83 @@ const Login = () => {
   });
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && !requiresMfa) {
       if (isAdmin) {
         navigate("/admin");
       } else {
         navigate("/");
       }
     }
-  }, [user, isAdmin, isLoading, navigate]);
+  }, [user, isAdmin, isLoading, navigate, requiresMfa]);
 
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
     const { error } = await signIn(data.email, data.password);
-    setIsSubmitting(false);
-
+    
     if (error) {
+      setIsSubmitting(false);
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: error.message || "Invalid credentials. Please try again.",
       });
-    } else {
-      toast({
-        title: "Welcome back!",
-        description: "You have been logged in successfully.",
-      });
+      return;
     }
+
+    // Check if MFA is required
+    const { data: assuranceData, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    
+    if (assuranceError) {
+      setIsSubmitting(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to check authentication status",
+      });
+      return;
+    }
+
+    // If next level is aal2, MFA is required
+    if (assuranceData.nextLevel === "aal2" && assuranceData.currentLevel === "aal1") {
+      setRequiresMfa(true);
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(false);
+    toast({
+      title: "Welcome back!",
+      description: "You have been logged in successfully.",
+    });
+  };
+
+  const handleMfaSuccess = () => {
+    setRequiresMfa(false);
+    toast({
+      title: "Welcome back!",
+      description: "You have been logged in successfully.",
+    });
+  };
+
+  const handleMfaCancel = async () => {
+    await supabase.auth.signOut();
+    setRequiresMfa(false);
+    loginForm.reset();
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Show MFA verification screen if required
+  if (requiresMfa) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+        <TwoFactorVerify onSuccess={handleMfaSuccess} onCancel={handleMfaCancel} />
       </div>
     );
   }
