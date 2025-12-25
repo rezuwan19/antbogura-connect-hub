@@ -166,7 +166,7 @@ const Login = () => {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex items-center justify-center gap-2">
             <Wifi className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold text-primary">NetNest BD</span>
+            <span className="text-2xl font-bold text-primary">ANT Bogura</span>
           </div>
           <CardTitle className="text-2xl">Admin Login</CardTitle>
           <CardDescription>
