@@ -1,15 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { User, Session } from "@supabase/supabase-js";
+import { User, Session, AuthMFAGetAuthenticatorAssuranceLevelResponse } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+
+type MfaAssuranceLevel = AuthMFAGetAuthenticatorAssuranceLevelResponse["data"];
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
   isLoading: boolean;
+  mfaLevel: MfaAssuranceLevel | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshMfaLevel: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +31,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaLevel, setMfaLevel] = useState<MfaAssuranceLevel | null>(null);
+
+  const refreshMfaLevel = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) throw error;
+      setMfaLevel(data);
+    } catch (error) {
+      console.error("Error getting MFA level:", error);
+    }
+  };
 
   const checkAdminRole = async (userId: string) => {
     const { data, error } = await supabase.rpc("has_role", {
@@ -102,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setMfaLevel(null);
   };
 
   return (
@@ -111,9 +127,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         session,
         isAdmin,
         isLoading,
+        mfaLevel,
         signIn,
         signUp,
         signOut,
+        refreshMfaLevel,
       }}
     >
       {children}

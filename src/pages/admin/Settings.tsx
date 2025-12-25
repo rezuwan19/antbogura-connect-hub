@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2, UserPlus, Key, Mail, Smartphone, Trash2, Shield } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Loader2, UserPlus, Key, Mail, Smartphone, Trash2, Shield, ShieldCheck, ShieldOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +11,27 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
+import TwoFactorSetup from "@/components/auth/TwoFactorSetup";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type DeviceSession = Tables<"device_sessions">;
+
+interface MfaFactor {
+  id: string;
+  friendly_name?: string;
+  factor_type: string;
+  status: string;
+  created_at: string;
+}
 
 const Settings = () => {
   const { user } = useAuth();
@@ -34,6 +53,13 @@ const Settings = () => {
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
+  // 2FA State
+  const [mfaFactors, setMfaFactors] = useState<MfaFactor[]>([]);
+  const [isLoadingMfa, setIsLoadingMfa] = useState(true);
+  const [showSetup, setShowSetup] = useState(false);
+  const [showDisableDialog, setShowDisableDialog] = useState(false);
+  const [isDisabling, setIsDisabling] = useState(false);
+
   const fetchSessions = async () => {
     if (!user) return;
     try {
@@ -52,9 +78,54 @@ const Settings = () => {
     }
   };
 
+  const fetchMfaFactors = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      setMfaFactors(data.totp || []);
+    } catch (error) {
+      console.error("Error fetching MFA factors:", error);
+    } finally {
+      setIsLoadingMfa(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSessions();
-  }, [user]);
+    fetchMfaFactors();
+  }, [user, fetchMfaFactors]);
+
+  const handleDisableMfa = async () => {
+    setIsDisabling(true);
+    try {
+      const factor = mfaFactors[0];
+      if (!factor) return;
+
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+      if (error) throw error;
+
+      toast({
+        title: "2FA Disabled",
+        description: "Two-factor authentication has been disabled",
+      });
+      setShowDisableDialog(false);
+      fetchMfaFactors();
+    } catch (error: any) {
+      console.error("Error disabling MFA:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to disable 2FA",
+      });
+    } finally {
+      setIsDisabling(false);
+    }
+  };
+
+  const handleSetupComplete = () => {
+    setShowSetup(false);
+    fetchMfaFactors();
+  };
 
   // Track current device session
   useEffect(() => {
@@ -274,7 +345,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="employees" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
             <TabsTrigger value="employees" className="gap-2">
               <UserPlus className="w-4 h-4 hidden sm:inline" />
               Employees
@@ -286,6 +357,10 @@ const Settings = () => {
             <TabsTrigger value="email" className="gap-2">
               <Mail className="w-4 h-4 hidden sm:inline" />
               Email
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <Shield className="w-4 h-4 hidden sm:inline" />
+              2FA
             </TabsTrigger>
             <TabsTrigger value="devices" className="gap-2">
               <Smartphone className="w-4 h-4 hidden sm:inline" />
@@ -519,7 +594,108 @@ const Settings = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Security / 2FA */}
+          <TabsContent value="security">
+            {showSetup ? (
+              <TwoFactorSetup
+                onComplete={handleSetupComplete}
+                onCancel={() => setShowSetup(false)}
+              />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Two-Factor Authentication
+                  </CardTitle>
+                  <CardDescription>
+                    Add an extra layer of security using an authenticator app
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingMfa ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : mfaFactors.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                        <ShieldCheck className="w-8 h-8 text-green-600" />
+                        <div>
+                          <p className="font-medium text-green-600">2FA is Enabled</p>
+                          <p className="text-sm text-muted-foreground">
+                            Your account is protected with an authenticator app
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Enrolled factor: {mfaFactors[0]?.friendly_name || "Authenticator App"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Added: {format(new Date(mfaFactors[0]?.created_at), "PPp")}
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        onClick={() => setShowDisableDialog(true)}
+                      >
+                        <ShieldOff className="w-4 h-4 mr-2" />
+                        Disable 2FA
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <Shield className="w-8 h-8 text-yellow-600" />
+                        <div>
+                          <p className="font-medium text-yellow-600">2FA is Not Enabled</p>
+                          <p className="text-sm text-muted-foreground">
+                            Enable two-factor authentication for better security
+                          </p>
+                        </div>
+                      </div>
+                      <Button onClick={() => setShowSetup(true)}>
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Enable 2FA
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
         </Tabs>
+
+        {/* Disable 2FA Confirmation Dialog */}
+        <AlertDialog open={showDisableDialog} onOpenChange={setShowDisableDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Disable Two-Factor Authentication?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the extra security layer from your account. You can re-enable it anytime.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDisableMfa}
+                disabled={isDisabling}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDisabling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Disabling...
+                  </>
+                ) : (
+                  "Disable 2FA"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
