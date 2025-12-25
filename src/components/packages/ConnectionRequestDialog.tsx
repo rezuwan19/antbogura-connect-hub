@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ConnectionRequestDialogProps {
   open: boolean;
@@ -56,12 +57,41 @@ const ConnectionRequestDialog = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const sendSms = async (phone: string, message: string, recordId: string) => {
+    try {
+      await supabase.functions.invoke("send-sms", {
+        body: { phone, message, type: "form_submission", recordId, tableName: "connection_requests" },
+      });
+    } catch (error) {
+      console.error("SMS sending failed:", error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate submission
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.from("connection_requests").insert({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || null,
+        district: formData.district,
+        upazila: formData.upazila,
+        address: formData.address,
+        message: formData.message || null,
+        package_name: selectedPackage || null,
+      }).select().single();
+
+      if (error) throw error;
+
+      // Send SMS to customer
+      await sendSms(
+        formData.phone,
+        `ধন্যবাদ ${formData.name}! আপনার কানেকশন রিকোয়েস্ট পেয়েছি${selectedPackage ? ` (${selectedPackage})` : ""}। ২৪ ঘন্টার মধ্যে যোগাযোগ করব। - ANT Bogura`,
+        data.id
+      );
+
       toast.success("Connection request submitted successfully! We'll contact you soon.");
       setFormData({
         name: "",
@@ -72,9 +102,13 @@ const ConnectionRequestDialog = ({
         address: "",
         message: "",
       });
-      setIsSubmitting(false);
       onOpenChange(false);
-    }, 1000);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to submit request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (

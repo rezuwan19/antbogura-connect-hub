@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contact = () => {
   const [simpleFormData, setSimpleFormData] = useState({
@@ -14,6 +15,7 @@ const Contact = () => {
     email: "",
     message: "",
   });
+  const [isSubmittingSimple, setIsSubmittingSimple] = useState(false);
 
   const [problemFormData, setProblemFormData] = useState({
     name: "",
@@ -22,28 +24,81 @@ const Contact = () => {
     problemType: "",
     description: "",
   });
+  const [isSubmittingProblem, setIsSubmittingProblem] = useState(false);
 
-  const handleSimpleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Message sent successfully! We'll get back to you soon.");
-    setSimpleFormData({
-      name: "",
-      phone: "",
-      email: "",
-      message: "",
-    });
+  const sendSms = async (phone: string, message: string, recordId: string, tableName: string) => {
+    try {
+      await supabase.functions.invoke("send-sms", {
+        body: { phone, message, type: "form_submission", recordId, tableName },
+      });
+    } catch (error) {
+      console.error("SMS sending failed:", error);
+    }
   };
 
-  const handleProblemSubmit = (e: React.FormEvent) => {
+  const handleSimpleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Problem reported successfully! Our team will contact you shortly.");
-    setProblemFormData({
-      name: "",
-      phone: "",
-      customerId: "",
-      problemType: "",
-      description: "",
-    });
+    setIsSubmittingSimple(true);
+
+    try {
+      const { data, error } = await supabase.from("contact_messages").insert({
+        name: simpleFormData.name,
+        phone: simpleFormData.phone,
+        email: simpleFormData.email || null,
+        message: simpleFormData.message,
+      }).select().single();
+
+      if (error) throw error;
+
+      // Send SMS to customer
+      await sendSms(
+        simpleFormData.phone,
+        `ধন্যবাদ ${simpleFormData.name}! আপনার মেসেজ পেয়েছি। শীঘ্রই যোগাযোগ করব। - ANT Bogura`,
+        data.id,
+        "contact_messages"
+      );
+
+      toast.success("Message sent successfully! We'll get back to you soon.");
+      setSimpleFormData({ name: "", phone: "", email: "", message: "" });
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setIsSubmittingSimple(false);
+    }
+  };
+
+  const handleProblemSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingProblem(true);
+
+    try {
+      const { data, error } = await supabase.from("problem_reports").insert({
+        name: problemFormData.name,
+        phone: problemFormData.phone,
+        customer_id: problemFormData.customerId || null,
+        problem_type: problemFormData.problemType,
+        description: problemFormData.description,
+      }).select().single();
+
+      if (error) throw error;
+
+      // Send SMS to customer
+      await sendSms(
+        problemFormData.phone,
+        `${problemFormData.name}, আপনার সমস্যা রিপোর্ট পেয়েছি। আমাদের টিম শীঘ্রই সমাধান করবে। - ANT Bogura`,
+        data.id,
+        "problem_reports"
+      );
+
+      toast.success("Problem reported successfully! Our team will contact you shortly.");
+      setProblemFormData({ name: "", phone: "", customerId: "", problemType: "", description: "" });
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to report problem. Please try again.");
+    } finally {
+      setIsSubmittingProblem(false);
+    }
   };
 
   const handleSimpleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -258,9 +313,13 @@ const Contact = () => {
                         />
                       </div>
 
-                      <Button type="submit" variant="hero" size="xl" className="w-full">
-                        <Send className="w-5 h-5" />
-                        Send Message
+                      <Button type="submit" variant="hero" size="xl" className="w-full" disabled={isSubmittingSimple}>
+                        {isSubmittingSimple ? "Sending..." : (
+                          <>
+                            <Send className="w-5 h-5" />
+                            Send Message
+                          </>
+                        )}
                       </Button>
                     </form>
                   </TabsContent>
@@ -355,9 +414,13 @@ const Contact = () => {
                         />
                       </div>
 
-                      <Button type="submit" variant="hero" size="xl" className="w-full">
-                        <Wifi className="w-5 h-5" />
-                        Report Problem
+                      <Button type="submit" variant="hero" size="xl" className="w-full" disabled={isSubmittingProblem}>
+                        {isSubmittingProblem ? "Submitting..." : (
+                          <>
+                            <Wifi className="w-5 h-5" />
+                            Report Problem
+                          </>
+                        )}
                       </Button>
                     </form>
                   </TabsContent>

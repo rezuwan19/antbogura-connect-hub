@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Loader2, Eye, Check, X, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -30,6 +30,13 @@ const statusColors: Record<RequestStatus, string> = {
   in_progress: "bg-blue-500/10 text-blue-600 border-blue-500/20",
   complete: "bg-green-500/10 text-green-600 border-green-500/20",
   cancelled: "bg-red-500/10 text-red-600 border-red-500/20",
+};
+
+const statusMessages: Record<RequestStatus, string> = {
+  pending: "আপনার কানেকশন রিকোয়েস্ট পেন্ডিং আছে। শীঘ্রই আপডেট দিব। - ANT Bogura",
+  in_progress: "আপনার কানেকশন রিকোয়েস্ট প্রসেস হচ্ছে। আমাদের টিম কাজ করছে। - ANT Bogura",
+  complete: "অভিনন্দন! আপনার কানেকশন সম্পন্ন হয়েছে। ইন্টারনেট উপভোগ করুন! - ANT Bogura",
+  cancelled: "দুঃখিত! আপনার কানেকশন রিকোয়েস্ট বাতিল করা হয়েছে। বিস্তারিত জানতে যোগাযোগ করুন। - ANT Bogura",
 };
 
 const ConnectionRequests = () => {
@@ -70,7 +77,23 @@ const ConnectionRequests = () => {
     fetchRequests();
   }, [filterStatus]);
 
-  const updateStatus = async (id: string, status: RequestStatus) => {
+  const sendStatusSms = async (phone: string, status: RequestStatus, recordId: string) => {
+    try {
+      await supabase.functions.invoke("send-sms", {
+        body: {
+          phone,
+          message: statusMessages[status],
+          type: "status_update",
+          recordId,
+          tableName: "connection_requests",
+        },
+      });
+    } catch (error) {
+      console.error("SMS sending failed:", error);
+    }
+  };
+
+  const updateStatus = async (id: string, status: RequestStatus, phone: string) => {
     try {
       const { error } = await supabase
         .from("connection_requests")
@@ -79,9 +102,12 @@ const ConnectionRequests = () => {
 
       if (error) throw error;
 
+      // Send SMS notification
+      await sendStatusSms(phone, status, id);
+
       toast({
         title: "Status Updated",
-        description: `Request status changed to ${status}.`,
+        description: `Request status changed to ${status}. SMS sent to customer.`,
       });
 
       fetchRequests();
@@ -148,6 +174,11 @@ const ConnectionRequests = () => {
                         <Badge variant="outline" className={statusColors[request.status as RequestStatus]}>
                           {request.status}
                         </Badge>
+                        {request.sms_sent && (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600">
+                            SMS Sent
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">{request.phone}</p>
                       {request.package_name && (
@@ -219,13 +250,13 @@ const ConnectionRequests = () => {
                   </div>
                 )}
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">Update Status</p>
+                  <p className="text-sm text-muted-foreground mb-2">Update Status (SMS will be sent)</p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       className="gap-1"
-                      onClick={() => updateStatus(selectedRequest.id, "pending")}
+                      onClick={() => updateStatus(selectedRequest.id, "pending", selectedRequest.phone)}
                     >
                       <Clock className="w-4 h-4" /> Pending
                     </Button>
@@ -233,7 +264,7 @@ const ConnectionRequests = () => {
                       size="sm"
                       variant="outline"
                       className="gap-1"
-                      onClick={() => updateStatus(selectedRequest.id, "in_progress")}
+                      onClick={() => updateStatus(selectedRequest.id, "in_progress", selectedRequest.phone)}
                     >
                       <Loader2 className="w-4 h-4" /> In Progress
                     </Button>
@@ -241,7 +272,7 @@ const ConnectionRequests = () => {
                       size="sm"
                       variant="outline"
                       className="gap-1"
-                      onClick={() => updateStatus(selectedRequest.id, "complete")}
+                      onClick={() => updateStatus(selectedRequest.id, "complete", selectedRequest.phone)}
                     >
                       <Check className="w-4 h-4" /> Complete
                     </Button>
@@ -249,7 +280,7 @@ const ConnectionRequests = () => {
                       size="sm"
                       variant="outline"
                       className="gap-1 text-destructive"
-                      onClick={() => updateStatus(selectedRequest.id, "cancelled")}
+                      onClick={() => updateStatus(selectedRequest.id, "cancelled", selectedRequest.phone)}
                     >
                       <X className="w-4 h-4" /> Cancel
                     </Button>
