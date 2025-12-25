@@ -95,6 +95,45 @@ export type Database = {
         }
         Relationships: []
       }
+      device_sessions: {
+        Row: {
+          browser: string | null
+          created_at: string
+          device_name: string
+          device_type: string
+          id: string
+          ip_address: string | null
+          is_current: boolean | null
+          last_active: string
+          os: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          device_name: string
+          device_type?: string
+          id?: string
+          ip_address?: string | null
+          is_current?: boolean | null
+          last_active?: string
+          os?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          device_name?: string
+          device_type?: string
+          id?: string
+          ip_address?: string | null
+          is_current?: boolean | null
+          last_active?: string
+          os?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       problem_reports: {
         Row: {
           created_at: string

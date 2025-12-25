@@ -8,7 +8,8 @@ import {
   AlertTriangle, 
   LogOut, 
   Menu,
-  X 
+  X,
+  Settings 
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ const navItems = [
   { path: "/admin/connection-requests", label: "Connection Requests", icon: Cable },
   { path: "/admin/contact-messages", label: "Contact Messages", icon: MessageSquare },
   { path: "/admin/problem-reports", label: "Problem Reports", icon: AlertTriangle },
+  { path: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
