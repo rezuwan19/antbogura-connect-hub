@@ -72,7 +72,21 @@ const ConnectionRequestDialog = ({
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.from("connection_requests").insert({
+      const recordId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : ([1e7] as any +-1e3 +-4e3 +-8e3 +-1e11).replace(/[018]/g, (c: any) =>
+              (
+                c ^
+                ((typeof crypto !== "undefined" && crypto.getRandomValues
+                  ? crypto.getRandomValues(new Uint8Array(1))[0]
+                  : Math.random() * 256) &
+                  (15 >> (c / 4)))
+              ).toString(16)
+            );
+
+      const { error } = await supabase.from("connection_requests").insert({
+        id: recordId,
         name: formData.name,
         phone: formData.phone,
         email: formData.email || null,
@@ -81,7 +95,7 @@ const ConnectionRequestDialog = ({
         address: formData.address,
         message: formData.message || null,
         package_name: selectedPackage || null,
-      }).select().single();
+      });
 
       if (error) throw error;
 
@@ -89,7 +103,7 @@ const ConnectionRequestDialog = ({
       await sendSms(
         formData.phone,
         `ধন্যবাদ ${formData.name}! আপনার কানেকশন রিকোয়েস্ট পেয়েছি${selectedPackage ? ` (${selectedPackage})` : ""}। ২৪ ঘন্টার মধ্যে যোগাযোগ করব। - ANT Bogura`,
-        data.id
+        recordId
       );
 
       toast.success("Connection request submitted successfully! We'll contact you soon.");
@@ -103,9 +117,11 @@ const ConnectionRequestDialog = ({
         message: "",
       });
       onOpenChange(false);
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to submit request. Please try again.");
+    } catch (error: any) {
+      console.error("Connection request submit error:", error);
+      const message =
+        typeof error?.message === "string" ? error.message : "Failed to submit request. Please try again.";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }

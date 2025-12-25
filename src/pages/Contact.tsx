@@ -41,12 +41,26 @@ const Contact = () => {
     setIsSubmittingSimple(true);
 
     try {
-      const { data, error } = await supabase.from("contact_messages").insert({
+      const recordId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : ([1e7] as any +-1e3 +-4e3 +-8e3 +-1e11).replace(/[018]/g, (c: any) =>
+              (
+                c ^
+                ((typeof crypto !== "undefined" && crypto.getRandomValues
+                  ? crypto.getRandomValues(new Uint8Array(1))[0]
+                  : Math.random() * 256) &
+                  (15 >> (c / 4)))
+              ).toString(16)
+            );
+
+      const { error } = await supabase.from("contact_messages").insert({
+        id: recordId,
         name: simpleFormData.name,
         phone: simpleFormData.phone,
         email: simpleFormData.email || null,
         message: simpleFormData.message,
-      }).select().single();
+      });
 
       if (error) throw error;
 
@@ -54,15 +68,17 @@ const Contact = () => {
       await sendSms(
         simpleFormData.phone,
         `ধন্যবাদ ${simpleFormData.name}! আপনার মেসেজ পেয়েছি। শীঘ্রই যোগাযোগ করব। - ANT Bogura`,
-        data.id,
+        recordId,
         "contact_messages"
       );
 
       toast.success("Message sent successfully! We'll get back to you soon.");
       setSimpleFormData({ name: "", phone: "", email: "", message: "" });
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to send message. Please try again.");
+    } catch (error: any) {
+      console.error("Contact form submit error:", error);
+      const message =
+        typeof error?.message === "string" ? error.message : "Failed to send message. Please try again.";
+      toast.error(message);
     } finally {
       setIsSubmittingSimple(false);
     }
@@ -73,13 +89,27 @@ const Contact = () => {
     setIsSubmittingProblem(true);
 
     try {
-      const { data, error } = await supabase.from("problem_reports").insert({
+      const recordId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : ([1e7] as any +-1e3 +-4e3 +-8e3 +-1e11).replace(/[018]/g, (c: any) =>
+              (
+                c ^
+                ((typeof crypto !== "undefined" && crypto.getRandomValues
+                  ? crypto.getRandomValues(new Uint8Array(1))[0]
+                  : Math.random() * 256) &
+                  (15 >> (c / 4)))
+              ).toString(16)
+            );
+
+      const { error } = await supabase.from("problem_reports").insert({
+        id: recordId,
         name: problemFormData.name,
         phone: problemFormData.phone,
         customer_id: problemFormData.customerId || null,
         problem_type: problemFormData.problemType,
         description: problemFormData.description,
-      }).select().single();
+      });
 
       if (error) throw error;
 
@@ -87,15 +117,17 @@ const Contact = () => {
       await sendSms(
         problemFormData.phone,
         `${problemFormData.name}, আপনার সমস্যা রিপোর্ট পেয়েছি। আমাদের টিম শীঘ্রই সমাধান করবে। - ANT Bogura`,
-        data.id,
+        recordId,
         "problem_reports"
       );
 
       toast.success("Problem reported successfully! Our team will contact you shortly.");
       setProblemFormData({ name: "", phone: "", customerId: "", problemType: "", description: "" });
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to report problem. Please try again.");
+    } catch (error: any) {
+      console.error("Problem report submit error:", error);
+      const message =
+        typeof error?.message === "string" ? error.message : "Failed to report problem. Please try again.";
+      toast.error(message);
     } finally {
       setIsSubmittingProblem(false);
     }
