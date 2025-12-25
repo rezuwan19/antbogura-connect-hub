@@ -1,8 +1,10 @@
+import { forwardRef } from "react";
 import { MessageCircle } from "lucide-react";
 
-const WhatsAppButton = () => {
+const WhatsAppButton = forwardRef<HTMLAnchorElement>((_, ref) => {
   return (
     <a
+      ref={ref}
       href="https://wa.me/8801332147787"
       target="_blank"
       rel="noopener noreferrer"
@@ -12,6 +14,8 @@ const WhatsAppButton = () => {
       <MessageCircle className="w-7 h-7 text-white" />
     </a>
   );
-};
+});
+
+WhatsAppButton.displayName = "WhatsAppButton";
 
 export default WhatsAppButton;
