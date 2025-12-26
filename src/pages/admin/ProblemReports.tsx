@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import StatusUpdateDialog from "@/components/admin/StatusUpdateDialog";
+import { logActivity } from "@/lib/activity-logger";
 
 interface ProblemReport {
   id: string;
@@ -127,6 +128,20 @@ const ProblemReports = () => {
         .eq("id", selectedReport.id);
 
       if (error) throw error;
+
+      // Log the activity
+      await logActivity({
+        userId: user.id,
+        eventType: "status_changed",
+        description: `Problem report for ${selectedReport.name} changed to ${status}${notes ? ` - ${notes}` : ""}`,
+        metadata: {
+          table: "problem_reports",
+          recordId: selectedReport.id,
+          oldStatus: selectedReport.status,
+          newStatus: status,
+          notes,
+        },
+      });
 
       toast({
         title: "Status Updated",

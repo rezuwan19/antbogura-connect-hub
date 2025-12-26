@@ -13,7 +13,9 @@ export type ActivityEventType =
   | "device_trusted"
   | "device_removed"
   | "session_removed"
-  | "employee_added";
+  | "employee_added"
+  | "employee_removed"
+  | "status_changed";
 
 interface LogActivityParams {
   userId: string;
@@ -57,6 +59,8 @@ export const getActivityIcon = (eventType: ActivityEventType): string => {
     device_removed: "🗑️",
     session_removed: "📱",
     employee_added: "👤",
+    employee_removed: "🚫",
+    status_changed: "📋",
   };
   return icons[eventType] || "📝";
 };
@@ -75,6 +79,8 @@ export const getActivityLabel = (eventType: ActivityEventType): string => {
     device_removed: "Device Removed",
     session_removed: "Session Removed",
     employee_added: "Employee Added",
+    employee_removed: "Employee Removed",
+    status_changed: "Status Changed",
   };
   return labels[eventType] || eventType;
 };

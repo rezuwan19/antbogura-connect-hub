@@ -19,6 +19,7 @@ interface ActivityLog {
   user_agent: string | null;
   metadata: unknown;
   created_at: string;
+  user_name?: string;
 }
 
 const ActivityLogs = () => {
@@ -54,11 +55,23 @@ const ActivityLogs = () => {
       const { data, error } = await query;
       if (error) throw error;
 
+      // Fetch user names for logs
+      const logsWithNames = await Promise.all(
+        (data || []).map(async (log) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", log.user_id)
+            .single();
+          return { ...log, user_name: profile?.full_name || "Unknown User" };
+        })
+      );
+
       if (reset) {
-        setLogs(data || []);
+        setLogs(logsWithNames);
         setPage(0);
       } else {
-        setLogs(prev => [...prev, ...(data || [])]);
+        setLogs(prev => [...prev, ...logsWithNames]);
       }
       
       setHasMore((data?.length || 0) === PAGE_SIZE);
@@ -104,6 +117,8 @@ const ActivityLogs = () => {
     "device_removed",
     "session_removed",
     "employee_added",
+    "employee_removed",
+    "status_changed",
   ];
 
   return (
@@ -177,6 +192,9 @@ const ActivityLogs = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">
                           {getActivityLabel(log.event_type as ActivityEventType)}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                          {log.user_name}
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
                           {getBrowserFromUA(log.user_agent)}

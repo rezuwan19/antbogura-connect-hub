@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import StatusUpdateDialog from "@/components/admin/StatusUpdateDialog";
+import { logActivity } from "@/lib/activity-logger";
 
 interface ConnectionRequest {
   id: string;
@@ -145,6 +146,20 @@ const ConnectionRequests = () => {
         .eq("id", selectedRequest.id);
 
       if (error) throw error;
+
+      // Log the activity
+      await logActivity({
+        userId: user.id,
+        eventType: "status_changed",
+        description: `Connection request for ${selectedRequest.name} changed to ${status}${notes ? ` - ${notes}` : ""}`,
+        metadata: {
+          table: "connection_requests",
+          recordId: selectedRequest.id,
+          oldStatus: selectedRequest.status,
+          newStatus: status,
+          notes,
+        },
+      });
 
       // Send SMS notification (fire-and-forget)
       void sendStatusSms(selectedRequest.phone, status, selectedRequest.id);
