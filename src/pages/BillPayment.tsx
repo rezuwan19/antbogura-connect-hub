@@ -78,7 +78,7 @@ const BillPayment = () => {
                 className="w-14 h-14 rounded-xl object-cover"
               />
               <div className="flex-1">
-                <h3 className="font-bold text-2xl text-foreground">bKash Payment</h3>
+                <h3 className="font-bold text-2xl text-foreground">BKash Payment</h3>
                 <div className="flex items-center gap-2">
                   <p className="text-muted-foreground">Merchant Account: {merchantNumber}</p>
                   <button
