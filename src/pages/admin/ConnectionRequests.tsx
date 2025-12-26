@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Eye, Download } from "lucide-react";
+import { Loader2, Eye, Download, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import StatusUpdateDialog from "@/components/admin/StatusUpdateDialog";
 import { logActivity } from "@/lib/activity-logger";
 import { exportToCSV } from "@/lib/csv-export";
+import { Input } from "@/components/ui/input";
 
 interface ConnectionRequest {
   id: string;
@@ -67,7 +68,20 @@ const ConnectionRequests = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ConnectionRequest | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const { toast } = useToast();
+
+  const filteredRequests = requests.filter((request) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      request.name.toLowerCase().includes(query) ||
+      request.phone.toLowerCase().includes(query) ||
+      (request.email?.toLowerCase().includes(query) ?? false) ||
+      (request.package_name?.toLowerCase().includes(query) ?? false) ||
+      (request.address?.toLowerCase().includes(query) ?? false)
+    );
+  });
 
   const fetchRequests = async () => {
     try {
@@ -204,11 +218,20 @@ const ConnectionRequests = () => {
               Manage new connection requests from customers
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full sm:w-[220px]"
+              />
+            </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportToCSV(requests, "connection_requests", [
+              onClick={() => exportToCSV(filteredRequests, "connection_requests", [
                 { key: "name", label: "Name" },
                 { key: "phone", label: "Phone" },
                 { key: "email", label: "Email" },
@@ -222,13 +245,13 @@ const ConnectionRequests = () => {
                 { key: "updated_by_name", label: "Updated By" },
                 { key: "created_at", label: "Created At" },
               ])}
-              disabled={requests.length === 0}
+              disabled={filteredRequests.length === 0}
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -242,15 +265,17 @@ const ConnectionRequests = () => {
           </div>
         </div>
 
-        {requests.length === 0 ? (
+        {filteredRequests.length === 0 ? (
           <Card>
             <CardContent className="flex items-center justify-center h-32">
-              <p className="text-muted-foreground">No connection requests found.</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? "No matching requests found." : "No connection requests found."}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {requests.map((request) => (
+            {filteredRequests.map((request) => (
               <Card key={request.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
