@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-const UPAZILAS = [
+
+const THANAS = [
   "Adamdighi",
   "Bogra Sadar",
   "Dhunat",
@@ -26,47 +26,8 @@ const UPAZILAS = [
   "Sonatala",
 ];
 
-const coverageAreas: Record<string, string[]> = {
-  "Bogra Sadar": [
-    "Satmatha",
-    "Borogola",
-    "Thana Road",
-    "College Para",
-    "Hospital Para",
-    "Jhawtala",
-    "Char Para",
-    "Khalifa More",
-    "Rangpur Road",
-    "Banani",
-    "Sunflower Para",
-    "Kabi Nazrul Islam Street",
-    "BSCIC Industrial Area",
-    "Sherpur Road Area",
-    "Railway Station Area",
-    "Bus Terminal Area",
-  ],
-  "Adamdighi": [],
-  "Dhunat": [],
-  "Dhupchanchia": [],
-  "Gabtali": [],
-  "Kahalu": [],
-  "Nandigram": [],
-  "Shajahanpur": [],
-  "Shibganj": [],
-  "Sherpur": [],
-  "Sariakandi": [],
-  "Sonatala": [],
-};
 const Coverage = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
-  const [selectedUpazila, setSelectedUpazila] = useState("Bogra Sadar");
-
-  const currentAreas = coverageAreas[selectedUpazila] || [];
-
-  // Get thanas with coverage
-  const thanasWithCoverage = UPAZILAS.filter(
-    (upazila) => coverageAreas[upazila] && coverageAreas[upazila].length > 0
-  );
 
   return (
     <Layout>
@@ -105,10 +66,10 @@ const Coverage = () => {
         </div>
       </section>
 
-      {/* Show coverage tabs only when district is selected */}
+      {/* Show thanas list only when district is selected */}
       {selectedDistrict && (
         <>
-          {/* Coverage Tabs Section */}
+          {/* Coverage Section */}
           <section className="section-padding bg-background">
             <div className="container-custom mx-auto">
               <div className="grid lg:grid-cols-2 gap-12">
@@ -135,61 +96,24 @@ const Coverage = () => {
                   </p>
                 </div>
 
-                {/* Thana Tabs */}
+                {/* Thanas List */}
                 <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
                   <h2 className="text-2xl font-bold text-foreground mb-6">
                     Covered Thanas in {selectedDistrict}
                   </h2>
                   
-                  <Tabs value={selectedUpazila} onValueChange={setSelectedUpazila} className="w-full">
-                    <TabsList className="w-full flex-wrap h-auto gap-2 bg-muted/50 p-2 mb-6">
-                      {UPAZILAS.map((upazila) => {
-                        const hasCoverage = coverageAreas[upazila]?.length > 0;
-                        return (
-                          <TabsTrigger
-                            key={upazila}
-                            value={upazila}
-                            className={`text-xs sm:text-sm ${
-                              !hasCoverage ? "opacity-50" : ""
-                            }`}
-                          >
-                            {upazila}
-                            {hasCoverage && (
-                              <CheckCircle className="w-3 h-3 ml-1 text-primary" />
-                            )}
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-
-                    {UPAZILAS.map((upazila) => {
-                      const areas = coverageAreas[upazila] || [];
-                      return (
-                        <TabsContent key={upazila} value={upazila}>
-                          {areas.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              {areas.map((area, index) => (
-                                <div
-                                  key={area}
-                                  className="flex items-center gap-3 bg-card p-4 rounded-xl border border-border hover:border-primary/30 transition-all"
-                                  style={{ animationDelay: `${index * 0.05}s` }}
-                                >
-                                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                                  <span className="text-foreground">{area}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="bg-muted/50 p-8 rounded-2xl text-center border border-border">
-                              <p className="text-muted-foreground">
-                                Coverage coming soon to {upazila}. Contact us to express interest.
-                              </p>
-                            </div>
-                          )}
-                        </TabsContent>
-                      );
-                    })}
-                  </Tabs>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {THANAS.map((thana, index) => (
+                      <div
+                        key={thana}
+                        className="flex items-center gap-3 bg-card p-4 rounded-xl border border-border hover:border-primary/30 transition-all"
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                      >
+                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                        <span className="text-foreground">{thana}</span>
+                      </div>
+                    ))}
+                  </div>
 
                   <div className="mt-8 p-6 bg-primary/5 rounded-2xl border border-primary/20">
                     <h3 className="font-semibold text-foreground mb-2">
