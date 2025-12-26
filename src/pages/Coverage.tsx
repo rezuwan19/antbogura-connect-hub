@@ -27,7 +27,7 @@ const THANAS = [
 ];
 
 const Coverage = () => {
-  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("Bogura");
 
   return (
     <Layout>
