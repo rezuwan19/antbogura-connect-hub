@@ -27,6 +27,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [mfaUserId, setMfaUserId] = useState<string | null>(null);
+  const [isCheckingMfa, setIsCheckingMfa] = useState(false);
   const { signIn, user, userRole, isLoading, refreshMfaLevel } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -36,19 +37,22 @@ const Login = () => {
     defaultValues: { email: "", password: "" },
   });
 
+  // If user is already signed in and we are not in the middle of MFA flow, redirect.
   useEffect(() => {
-    if (!isLoading && user && !requiresMfa) {
-      // All employees (users with a role) go to admin dashboard
+    if (!isLoading && user && !requiresMfa && !isCheckingMfa) {
       navigate(userRole ? "/admin" : "/");
     }
-  }, [user, userRole, isLoading, navigate, requiresMfa]);
+  }, [user, userRole, isLoading, navigate, requiresMfa, isCheckingMfa]);
 
   const handleLogin = async (data: LoginFormData) => {
     setIsSubmitting(true);
+    setIsCheckingMfa(true);
+
     const { error } = await signIn(data.email, data.password);
-    
+
     if (error) {
       setIsSubmitting(false);
+      setIsCheckingMfa(false);
       toast({
         variant: "destructive",
         title: "Login Failed",
@@ -60,17 +64,20 @@ const Login = () => {
     // Get current user to check MFA
     const { data: sessionData } = await supabase.auth.getSession();
     const currentUser = sessionData?.session?.user;
-    
+
     if (!currentUser) {
       setIsSubmitting(false);
+      setIsCheckingMfa(false);
       return;
     }
 
     // Check if MFA is required
-    const { data: assuranceData, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    
+    const { data: assuranceData, error: assuranceError } =
+      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
     if (assuranceError) {
       setIsSubmitting(false);
+      setIsCheckingMfa(false);
       toast({
         variant: "destructive",
         title: "Error",
@@ -83,7 +90,7 @@ const Login = () => {
     if (assuranceData.nextLevel === "aal2" && assuranceData.currentLevel === "aal1") {
       // Check if this is a trusted device
       const isTrusted = await checkTrustedDevice(currentUser.id);
-      
+
       if (isTrusted) {
         // Skip MFA for trusted device
         await logActivity({
@@ -91,18 +98,21 @@ const Login = () => {
           eventType: "login",
           description: "Logged in (2FA skipped - trusted device)",
         });
-        
+
         setIsSubmitting(false);
+        setIsCheckingMfa(false);
         toast({
           title: "Welcome back!",
           description: "You have been logged in successfully.",
         });
+        navigate(userRole ? "/admin" : "/");
         return;
       }
 
       setMfaUserId(currentUser.id);
       setRequiresMfa(true);
       setIsSubmitting(false);
+      setIsCheckingMfa(false);
       return;
     }
 
@@ -114,10 +124,12 @@ const Login = () => {
     });
 
     setIsSubmitting(false);
+    setIsCheckingMfa(false);
     toast({
       title: "Welcome back!",
       description: "You have been logged in successfully.",
     });
+    navigate(userRole ? "/admin" : "/");
   };
 
   const handleMfaSuccess = async () => {
