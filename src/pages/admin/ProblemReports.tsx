@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Eye, Download } from "lucide-react";
+import { Loader2, Eye, Download, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import StatusUpdateDialog from "@/components/admin/StatusUpdateDialog";
 import { logActivity } from "@/lib/activity-logger";
 import { exportToCSV } from "@/lib/csv-export";
+import { Input } from "@/components/ui/input";
 
 interface ProblemReport {
   id: string;
@@ -65,7 +66,20 @@ const ProblemReports = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ProblemReport | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const { toast } = useToast();
+
+  const filteredReports = reports.filter((report) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      report.name.toLowerCase().includes(query) ||
+      report.phone.toLowerCase().includes(query) ||
+      (report.customer_id?.toLowerCase().includes(query) ?? false) ||
+      report.problem_type.toLowerCase().includes(query) ||
+      report.description.toLowerCase().includes(query)
+    );
+  });
 
   const fetchReports = async () => {
     try {
@@ -183,11 +197,20 @@ const ProblemReports = () => {
               Handle customer service issues and complaints
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full sm:w-[220px]"
+              />
+            </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportToCSV(reports, "problem_reports", [
+              onClick={() => exportToCSV(filteredReports, "problem_reports", [
                 { key: "name", label: "Name" },
                 { key: "phone", label: "Phone" },
                 { key: "customer_id", label: "Customer ID" },
@@ -198,13 +221,13 @@ const ProblemReports = () => {
                 { key: "updated_by_name", label: "Updated By" },
                 { key: "created_at", label: "Created At" },
               ])}
-              disabled={reports.length === 0}
+              disabled={filteredReports.length === 0}
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -218,15 +241,17 @@ const ProblemReports = () => {
           </div>
         </div>
 
-        {reports.length === 0 ? (
+        {filteredReports.length === 0 ? (
           <Card>
             <CardContent className="flex items-center justify-center h-32">
-              <p className="text-muted-foreground">No problem reports found.</p>
+              <p className="text-muted-foreground">
+                {searchQuery ? "No matching reports found." : "No problem reports found."}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {reports.map((report) => (
+            {filteredReports.map((report) => (
               <Card key={report.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
