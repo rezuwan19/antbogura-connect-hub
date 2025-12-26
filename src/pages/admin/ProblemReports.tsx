@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Loader2, Eye } from "lucide-react";
+import { Loader2, Eye, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import StatusUpdateDialog from "@/components/admin/StatusUpdateDialog";
 import { logActivity } from "@/lib/activity-logger";
+import { exportToCSV } from "@/lib/csv-export";
 
 interface ProblemReport {
   id: string;
@@ -182,18 +183,39 @@ const ProblemReports = () => {
               Handle customer service issues and complaints
             </p>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="complete">Complete</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportToCSV(reports, "problem_reports", [
+                { key: "name", label: "Name" },
+                { key: "phone", label: "Phone" },
+                { key: "customer_id", label: "Customer ID" },
+                { key: "problem_type", label: "Problem Type" },
+                { key: "description", label: "Description" },
+                { key: "status", label: "Status" },
+                { key: "status_notes", label: "Status Notes" },
+                { key: "updated_by_name", label: "Updated By" },
+                { key: "created_at", label: "Created At" },
+              ])}
+              disabled={reports.length === 0}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="complete">Complete</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {reports.length === 0 ? (

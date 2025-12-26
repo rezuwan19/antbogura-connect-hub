@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, History, Search, Filter } from "lucide-react";
+import { Loader2, History, Search, Filter, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { getActivityIcon, getActivityLabel, ActivityEventType } from "@/lib/activity-logger";
+import { exportToCSV } from "@/lib/csv-export";
 
 interface ActivityLog {
   id: string;
@@ -153,20 +154,37 @@ const ActivityLogs = () => {
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  {eventTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {getActivityIcon(type)} {getActivityLabel(type)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportToCSV(logs, "activity_logs", [
+                    { key: "user_name", label: "User" },
+                    { key: "event_type", label: "Event Type" },
+                    { key: "description", label: "Description" },
+                    { key: "ip_address", label: "IP Address" },
+                    { key: "created_at", label: "Date" },
+                  ])}
+                  disabled={logs.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Events</SelectItem>
+                    {eventTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {getActivityIcon(type)} {getActivityLabel(type)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Logs List */}
