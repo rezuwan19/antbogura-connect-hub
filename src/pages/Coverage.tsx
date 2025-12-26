@@ -98,8 +98,8 @@ const Coverage = () => {
 
                 {/* Thanas List */}
                 <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
-                  <h2 className="text-2xl font-bold text-foreground mb-6">
-                    Covered Thanas in {selectedDistrict}
+                <h2 className="text-2xl font-bold text-foreground mb-6">
+                    Covered Upazila/Thanas in {selectedDistrict}
                   </h2>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
