@@ -27,7 +27,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [mfaUserId, setMfaUserId] = useState<string | null>(null);
-  const { signIn, user, userRole, isLoading } = useAuth();
+  const { signIn, user, userRole, isLoading, refreshMfaLevel } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -120,13 +120,17 @@ const Login = () => {
     });
   };
 
-  const handleMfaSuccess = () => {
+  const handleMfaSuccess = async () => {
+    // Refresh MFA level in auth context after successful verification
+    await refreshMfaLevel();
     setRequiresMfa(false);
     setMfaUserId(null);
     toast({
       title: "Welcome back!",
       description: "You have been logged in successfully.",
     });
+    // Navigate to admin after successful MFA
+    navigate("/admin");
   };
 
   const handleMfaCancel = async () => {
