@@ -22,8 +22,17 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
     return <Navigate to="/login" replace />;
   }
 
-  // Any user with a role (admin, manager, or user) can access protected routes
-  // This means all employees can access the dashboard
+  // If a dashboard route requires a role, wait until role is loaded.
+  // (Role is fetched async after session becomes available.)
+  if (requireAdmin && userRole === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Any employee with a role can access the dashboard
   if (requireAdmin && !userRole) {
     return <Navigate to="/" replace />;
   }
