@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
     let employeeName = "";
     let employeePhone = "";
     let isEmployee = false;
+    let assignRole = "user"; // Default role for employees
 
     try {
       const body = await req.json();
@@ -36,9 +37,16 @@ Deno.serve(async (req) => {
         employeeName = body.name || "";
         employeePhone = body.phone || "";
         isEmployee = body.isEmployee || false;
+        assignRole = body.role || "user"; // Accept role from request
       }
     } catch {
       // No body or invalid JSON - use defaults for initial setup
+    }
+
+    // Validate role
+    const validRoles = ["admin", "manager", "user"];
+    if (!validRoles.includes(assignRole)) {
+      assignRole = "user";
     }
 
     // Check if user already exists
@@ -92,8 +100,8 @@ Deno.serve(async (req) => {
       .single();
 
     if (!existingRole) {
-      // Assign role (admin for default, or based on isEmployee flag)
-      const roleToAssign = isEmployee ? "admin" : "admin"; // All employees get admin role for now
+      // Assign role based on isEmployee flag and provided role
+      const roleToAssign = isEmployee ? assignRole : "admin";
       const { error: roleError } = await supabase.from("user_roles").insert({
         user_id: userId!,
         role: roleToAssign,
@@ -116,7 +124,7 @@ Deno.serve(async (req) => {
           full_name: employeeName,
           phone: employeePhone,
           email: adminEmail,
-          role: "employee",
+          role: assignRole, // Store readable role in profile
         }, { onConflict: "user_id" });
 
       if (profileError) {
@@ -132,6 +140,7 @@ Deno.serve(async (req) => {
         message: adminEmail === "admin@admin.com" ? "Admin user setup complete" : "Employee added successfully",
         email: adminEmail,
         userId: userId,
+        role: assignRole,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

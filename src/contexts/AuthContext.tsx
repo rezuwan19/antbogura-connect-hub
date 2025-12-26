@@ -3,11 +3,14 @@ import { User, Session, AuthMFAGetAuthenticatorAssuranceLevelResponse } from "@s
 import { supabase } from "@/integrations/supabase/client";
 
 type MfaAssuranceLevel = AuthMFAGetAuthenticatorAssuranceLevelResponse["data"];
+type UserRole = 'admin' | 'manager' | 'user' | null;
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAdmin: boolean;
+  isManager: boolean;
+  userRole: UserRole;
   isLoading: boolean;
   mfaLevel: MfaAssuranceLevel | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -30,6 +33,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mfaLevel, setMfaLevel] = useState<MfaAssuranceLevel | null>(null);
 
@@ -43,18 +48,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const checkAdminRole = async (userId: string) => {
-    const { data, error } = await supabase.rpc("has_role", {
+  const fetchUserRole = async (userId: string) => {
+    const { data, error } = await supabase.rpc("get_user_role", {
       _user_id: userId,
-      _role: "admin",
     });
     
     if (error) {
-      console.error("Error checking admin role:", error);
-      return false;
+      console.error("Error fetching user role:", error);
+      return null;
     }
     
-    return data || false;
+    return data as UserRole;
   };
 
   useEffect(() => {
@@ -64,13 +68,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer admin check with setTimeout to prevent deadlock
+        // Defer role check with setTimeout to prevent deadlock
         if (session?.user) {
           setTimeout(() => {
-            checkAdminRole(session.user.id).then(setIsAdmin);
+            fetchUserRole(session.user.id).then((role) => {
+              setUserRole(role);
+              setIsAdmin(role === 'admin');
+              setIsManager(role === 'manager');
+            });
           }, 0);
         } else {
           setIsAdmin(false);
+          setIsManager(false);
+          setUserRole(null);
         }
       }
     );
@@ -81,8 +91,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        checkAdminRole(session.user.id).then((admin) => {
-          setIsAdmin(admin);
+        fetchUserRole(session.user.id).then((role) => {
+          setUserRole(role);
+          setIsAdmin(role === 'admin');
+          setIsManager(role === 'manager');
           setIsLoading(false);
         });
       } else {
@@ -117,6 +129,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setIsManager(false);
+    setUserRole(null);
     setMfaLevel(null);
   };
 
@@ -126,6 +140,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         session,
         isAdmin,
+        isManager,
+        userRole,
         isLoading,
         mfaLevel,
         signIn,

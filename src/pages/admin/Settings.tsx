@@ -32,6 +32,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 interface DeviceSession {
   id: string;
@@ -76,8 +84,11 @@ interface Employee {
 }
 
 const Settings = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager, userRole } = useAuth();
   const { toast } = useToast();
+  
+  // Check if current user can manage employees (admin or manager)
+  const canManageEmployees = isAdmin || isManager;
 
   // Add Employee State
   const [newEmployee, setNewEmployee] = useState({ 
@@ -85,7 +96,8 @@ const Settings = () => {
     phone: "", 
     email: "", 
     password: "", 
-    confirmPassword: "" 
+    confirmPassword: "",
+    role: "user" as "admin" | "manager" | "user"
   });
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -117,7 +129,7 @@ const Settings = () => {
   const [isLoadingTrusted, setIsLoadingTrusted] = useState(true);
 
   const fetchEmployees = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!canManageEmployees) return;
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -131,7 +143,7 @@ const Settings = () => {
     } finally {
       setIsLoadingEmployees(false);
     }
-  }, [isAdmin]);
+  }, [canManageEmployees]);
 
   const fetchSessions = async () => {
     if (!user) return;
@@ -185,10 +197,10 @@ const Settings = () => {
     fetchSessions();
     fetchMfaFactors();
     fetchTrustedDevices();
-    if (isAdmin) {
+    if (canManageEmployees) {
       fetchEmployees();
     }
-  }, [user, fetchMfaFactors, fetchTrustedDevices, isAdmin, fetchEmployees]);
+  }, [user, fetchMfaFactors, fetchTrustedDevices, canManageEmployees, fetchEmployees]);
 
   const handleDisableMfa = async () => {
     setIsDisabling(true);
@@ -342,6 +354,12 @@ const Settings = () => {
       return;
     }
 
+    // Managers can only add employees (users), not admins or managers
+    if (isManager && !isAdmin && (newEmployee.role === "admin" || newEmployee.role === "manager")) {
+      toast({ variant: "destructive", title: "Error", description: "You can only add employees" });
+      return;
+    }
+
     setIsAddingEmployee(true);
 
     try {
@@ -353,6 +371,7 @@ const Settings = () => {
           name: newEmployee.name,
           phone: newEmployee.phone,
           isEmployee: true,
+          role: newEmployee.role,
         },
       });
 
@@ -362,12 +381,12 @@ const Settings = () => {
         await logActivity({
           userId: user.id,
           eventType: "employee_added",
-          description: `Added new employee: ${newEmployee.name}`,
+          description: `Added new ${newEmployee.role}: ${newEmployee.name}`,
         });
       }
 
-      toast({ title: "Success", description: "Employee added successfully. They can now login." });
-      setNewEmployee({ name: "", phone: "", email: "", password: "", confirmPassword: "" });
+      toast({ title: "Success", description: `${newEmployee.role.charAt(0).toUpperCase() + newEmployee.role.slice(1)} added successfully. They can now login.` });
+      setNewEmployee({ name: "", phone: "", email: "", password: "", confirmPassword: "", role: "user" });
       fetchEmployees();
     } catch (error: any) {
       console.error("Error adding employee:", error);
@@ -381,8 +400,30 @@ const Settings = () => {
     }
   };
 
+  // Check if current user can delete a specific employee
+  const canDeleteEmployee = (employee: Employee): boolean => {
+    const employeeRole = employee.role || "user";
+    
+    // Admin can delete anyone
+    if (isAdmin) return true;
+    
+    // Manager can only delete users (employees), not admins or managers
+    if (isManager && !isAdmin) {
+      return employeeRole === "user" || employeeRole === "employee";
+    }
+    
+    return false;
+  };
+
   const handleDeleteEmployee = async () => {
     if (!employeeToDelete) return;
+    
+    // Double check permission
+    if (!canDeleteEmployee(employeeToDelete)) {
+      toast({ variant: "destructive", title: "Error", description: "You don't have permission to remove this user" });
+      setEmployeeToDelete(null);
+      return;
+    }
     
     setIsDeletingEmployee(true);
     try {
@@ -401,6 +442,14 @@ const Settings = () => {
         .eq("user_id", employeeToDelete.user_id);
 
       if (roleError) console.error("Error deleting role:", roleError);
+
+      if (user) {
+        await logActivity({
+          userId: user.id,
+          eventType: "employee_removed",
+          description: `Removed ${employeeToDelete.role || "user"}: ${employeeToDelete.full_name}`,
+        });
+      }
 
       toast({ title: "Success", description: "Employee removed successfully" });
       setEmployeeToDelete(null);
@@ -508,7 +557,7 @@ const Settings = () => {
   };
 
   // Determine which tabs to show based on role
-  const tabItems = isAdmin
+  const tabItems = canManageEmployees
     ? [
         { value: "employees", label: "Employees", icon: Users },
         { value: "password", label: "Password", icon: Key },
@@ -523,17 +572,26 @@ const Settings = () => {
         { value: "devices", label: "Devices", icon: Smartphone },
       ];
 
+  // Get role badge color
+  const getRoleBadgeVariant = (role: string | null) => {
+    switch (role) {
+      case "admin": return "destructive";
+      case "manager": return "default";
+      default: return "secondary";
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground mt-1">
-            {isAdmin ? "Manage your account and employees" : "Manage your account settings"}
+            {canManageEmployees ? "Manage your account and employees" : "Manage your account settings"}
           </p>
         </div>
 
-        <Tabs defaultValue={isAdmin ? "employees" : "password"} className="w-full">
+        <Tabs defaultValue={canManageEmployees ? "employees" : "password"} className="w-full">
           <TabsList className={`grid w-full lg:w-[600px]`} style={{ gridTemplateColumns: `repeat(${tabItems.length}, 1fr)` }}>
             {tabItems.map((item) => (
               <TabsTrigger key={item.value} value={item.value} className="gap-2">
@@ -543,17 +601,17 @@ const Settings = () => {
             ))}
           </TabsList>
 
-          {/* Add Employee - Admin Only */}
-          {isAdmin && (
+          {/* Add Employee - Admin and Manager */}
+          {canManageEmployees && (
             <TabsContent value="employees" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <UserPlus className="w-5 h-5" />
-                    Add New Employee
+                    Add New User
                   </CardTitle>
                   <CardDescription>
-                    Create a new admin account for an employee
+                    Create a new account with a specific role
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -568,6 +626,32 @@ const Settings = () => {
                         onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
                         required
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="emp-role">Role *</Label>
+                      <Select
+                        value={newEmployee.role}
+                        onValueChange={(value: "admin" | "manager" | "user") => setNewEmployee({ ...newEmployee, role: value })}
+                      >
+                        <SelectTrigger id="emp-role">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Only admins can create admins and managers */}
+                          {isAdmin && (
+                            <>
+                              <SelectItem value="admin">Admin (Full Access)</SelectItem>
+                              <SelectItem value="manager">Manager (Can manage employees)</SelectItem>
+                            </>
+                          )}
+                          <SelectItem value="user">Employee (Limited access)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {newEmployee.role === "admin" && "Admins have full access to all features"}
+                        {newEmployee.role === "manager" && "Managers can add/remove employees but not admins"}
+                        {newEmployee.role === "user" && "Employees have access to all features except employee management"}
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="emp-phone">Phone Number</Label>
@@ -621,7 +705,7 @@ const Settings = () => {
                       ) : (
                         <>
                           <UserPlus className="w-4 h-4 mr-2" />
-                          Add Employee
+                          Add {newEmployee.role.charAt(0).toUpperCase() + newEmployee.role.slice(1)}
                         </>
                       )}
                     </Button>
@@ -634,10 +718,10 @@ const Settings = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Employee List
+                    User List
                   </CardTitle>
                   <CardDescription>
-                    All registered employees
+                    All registered users
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -646,13 +730,14 @@ const Settings = () => {
                       <Loader2 className="w-6 h-6 animate-spin text-primary" />
                     </div>
                   ) : employees.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No employees found</p>
+                    <p className="text-muted-foreground text-center py-8">No users found</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Name</TableHead>
+                            <TableHead>Role</TableHead>
                             <TableHead>Phone</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Added</TableHead>
@@ -665,20 +750,29 @@ const Settings = () => {
                               <TableCell className="font-medium">
                                 {employee.full_name || "N/A"}
                               </TableCell>
+                              <TableCell>
+                                <Badge variant={getRoleBadgeVariant(employee.role)}>
+                                  {employee.role || "user"}
+                                </Badge>
+                              </TableCell>
                               <TableCell>{employee.phone || "N/A"}</TableCell>
                               <TableCell>{employee.email || "N/A"}</TableCell>
                               <TableCell>
                                 {format(new Date(employee.created_at), "PP")}
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => setEmployeeToDelete(employee)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                {canDeleteEmployee(employee) ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => setEmployeeToDelete(employee)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Protected</span>
+                                )}
                               </TableCell>
                             </TableRow>
                           ))}
