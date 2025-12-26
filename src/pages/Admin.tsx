@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Cable, MessageSquare, AlertTriangle, Clock, CheckCircle, Loader2, Activity, TrendingUp } from "lucide-react";
+import { Cable, MessageSquare, AlertTriangle, Clock, CheckCircle, Loader2, Activity, TrendingUp, Users, Shield, UserCog, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { format } from "date-fns";
 import { getActivityIcon, getActivityLabel, ActivityEventType } from "@/lib/activity-logger";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Stats {
   connectionRequests: { pending: number; inProgress: number; total: number };
   contactMessages: { pending: number; inProgress: number; total: number };
   problemReports: { pending: number; inProgress: number; total: number };
+}
+
+interface RoleStats {
+  admins: number;
+  managers: number;
+  employees: number;
+  total: number;
 }
 
 interface RecentActivity {
@@ -22,10 +30,19 @@ interface RecentActivity {
 }
 
 const Admin = () => {
+  const { isAdmin, isManager } = useAuth();
+  const canManageEmployees = isAdmin || isManager;
+  
   const [stats, setStats] = useState<Stats>({
     connectionRequests: { pending: 0, inProgress: 0, total: 0 },
     contactMessages: { pending: 0, inProgress: 0, total: 0 },
     problemReports: { pending: 0, inProgress: 0, total: 0 },
+  });
+  const [roleStats, setRoleStats] = useState<RoleStats>({
+    admins: 0,
+    managers: 0,
+    employees: 0,
+    total: 0,
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +70,22 @@ const Admin = () => {
           .select("status");
         
         if (problemError) throw problemError;
+
+        // Fetch user role stats if user can manage employees
+        if (canManageEmployees) {
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("role");
+
+          if (!profileError && profileData) {
+            setRoleStats({
+              admins: profileData.filter((p) => p.role === "admin").length,
+              managers: profileData.filter((p) => p.role === "manager").length,
+              employees: profileData.filter((p) => p.role === "user" || p.role === "employee" || !p.role).length,
+              total: profileData.length,
+            });
+          }
+        }
 
         // Fetch recent activity logs
         const { data: activityData, error: activityError } = await supabase
@@ -102,7 +135,7 @@ const Admin = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [canManageEmployees]);
 
   if (isLoading) {
     return (
@@ -197,6 +230,58 @@ const Admin = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* User Role Stats - Only for admins/managers */}
+        {canManageEmployees && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Team Overview
+                  </CardTitle>
+                  <CardDescription>User counts by role</CardDescription>
+                </div>
+                <Link to="/admin/settings">
+                  <span className="text-sm text-primary hover:underline">Manage Users</span>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-red-500/10">
+                  <Shield className="w-8 h-8 text-red-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{roleStats.admins}</p>
+                    <p className="text-sm text-muted-foreground">Admins</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/10">
+                  <UserCog className="w-8 h-8 text-blue-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{roleStats.managers}</p>
+                    <p className="text-sm text-muted-foreground">Managers</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10">
+                  <User className="w-8 h-8 text-green-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{roleStats.employees}</p>
+                    <p className="text-sm text-muted-foreground">Employees</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/10">
+                  <Users className="w-8 h-8 text-purple-500" />
+                  <div>
+                    <p className="text-2xl font-bold">{roleStats.total}</p>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Detail Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

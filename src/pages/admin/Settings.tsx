@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, UserPlus, Key, Mail, Smartphone, Trash2, Shield, ShieldCheck, ShieldOff, Laptop, Users } from "lucide-react";
+import { Loader2, UserPlus, Key, Mail, Smartphone, Trash2, Shield, ShieldCheck, ShieldOff, Laptop, Users, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -104,6 +112,11 @@ const Settings = () => {
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
+  
+  // Edit Role State
+  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+  const [editingRole, setEditingRole] = useState<"admin" | "manager" | "user">("user");
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   // Password Change State
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
@@ -413,6 +426,75 @@ const Settings = () => {
     }
     
     return false;
+  };
+
+  // Check if current user can edit a specific employee's role
+  const canEditRole = (employee: Employee): boolean => {
+    const employeeRole = employee.role || "user";
+    
+    // Admin can edit anyone's role
+    if (isAdmin) return true;
+    
+    // Manager can only edit users (employees), not admins or managers
+    if (isManager && !isAdmin) {
+      return employeeRole === "user" || employeeRole === "employee";
+    }
+    
+    return false;
+  };
+
+  // Get available roles for the role selector based on current user's role
+  const getAvailableRolesForEdit = (): ("admin" | "manager" | "user")[] => {
+    if (isAdmin) {
+      return ["admin", "manager", "user"];
+    }
+    // Managers can only set to user role
+    return ["user"];
+  };
+
+  const handleUpdateRole = async () => {
+    if (!employeeToEdit) return;
+    
+    // Double check permission
+    if (!canEditRole(employeeToEdit)) {
+      toast({ variant: "destructive", title: "Error", description: "You don't have permission to change this user's role" });
+      setEmployeeToEdit(null);
+      return;
+    }
+
+    setIsUpdatingRole(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-user-role", {
+        body: {
+          targetUserId: employeeToEdit.user_id,
+          newRole: editingRole,
+        },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      if (user) {
+        await logActivity({
+          userId: user.id,
+          eventType: "status_changed",
+          description: `Changed ${employeeToEdit.full_name}'s role from ${employeeToEdit.role || "user"} to ${editingRole}`,
+        });
+      }
+
+      toast({ title: "Success", description: `Role updated to ${editingRole}` });
+      setEmployeeToEdit(null);
+      fetchEmployees();
+    } catch (error: any) {
+      console.error("Error updating role:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update role",
+      });
+    } finally {
+      setIsUpdatingRole(false);
+    }
   };
 
   const handleDeleteEmployee = async () => {
@@ -761,18 +843,34 @@ const Settings = () => {
                                 {format(new Date(employee.created_at), "PP")}
                               </TableCell>
                               <TableCell className="text-right">
-                                {canDeleteEmployee(employee) ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={() => setEmployeeToDelete(employee)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">Protected</span>
-                                )}
+                                <div className="flex items-center justify-end gap-1">
+                                  {canEditRole(employee) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        setEmployeeToEdit(employee);
+                                        setEditingRole((employee.role as "admin" | "manager" | "user") || "user");
+                                      }}
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  {canDeleteEmployee(employee) ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => setEmployeeToDelete(employee)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  ) : (
+                                    !canEditRole(employee) && (
+                                      <span className="text-xs text-muted-foreground">Protected</span>
+                                    )
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -1114,6 +1212,66 @@ const Settings = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Edit Role Dialog */}
+        <Dialog open={!!employeeToEdit} onOpenChange={() => setEmployeeToEdit(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Role</DialogTitle>
+              <DialogDescription>
+                Update the role for {employeeToEdit?.full_name || "this user"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Current Role</Label>
+                <Badge variant={getRoleBadgeVariant(employeeToEdit?.role || null)}>
+                  {employeeToEdit?.role || "user"}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-role">New Role</Label>
+                <Select
+                  value={editingRole}
+                  onValueChange={(value: "admin" | "manager" | "user") => setEditingRole(value)}
+                >
+                  <SelectTrigger id="new-role">
+                    <SelectValue placeholder="Select new role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableRolesForEdit().map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role === "admin" && "Admin (Full Access)"}
+                        {role === "manager" && "Manager (Can manage employees)"}
+                        {role === "user" && "Employee (Limited access)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {editingRole === "admin" && "Admins have full access to all features"}
+                  {editingRole === "manager" && "Managers can add/remove employees but not admins"}
+                  {editingRole === "user" && "Employees have access to all features except employee management"}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEmployeeToEdit(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateRole} disabled={isUpdatingRole || editingRole === employeeToEdit?.role}>
+                {isUpdatingRole ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Role"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
