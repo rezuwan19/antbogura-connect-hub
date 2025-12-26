@@ -86,9 +86,6 @@ const HeroSection = () => {
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
-              <Button asChild variant="hero-outline" size="xl">
-                <Link to="/contact">Request New Connection</Link>
-              </Button>
             </div>
 
             {/* Stats */}
