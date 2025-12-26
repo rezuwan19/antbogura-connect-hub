@@ -12,6 +12,7 @@ import FtpLiveTv from "./pages/FtpLiveTv";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Support from "./pages/Support";
+import BillPayment from "./pages/BillPayment";
 import Login from "./pages/Login";
 import Admin from "./pages/Admin";
 import ConnectionRequests from "./pages/admin/ConnectionRequests";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/support" element={<Support />} />
+            <Route path="/bill-payment" element={<BillPayment />} />
             <Route path="/login" element={<Login />} />
             <Route
               path="/admin"
