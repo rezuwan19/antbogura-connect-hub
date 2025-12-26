@@ -1,6 +1,7 @@
 import Layout from "@/components/layout/Layout";
-import { CreditCard, Smartphone, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import paymentInfoImage from "@/assets/payment-info.jpg";
+import paymentLogos from "@/assets/payment-logos.jpg";
 
 const BillPayment = () => {
   return (
@@ -23,9 +24,11 @@ const BillPayment = () => {
           {/* bKash Payment Section */}
           <div className="bg-card p-6 md:p-8 rounded-2xl border border-border mb-8">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 bg-[#E2136E]/10 rounded-xl flex items-center justify-center">
-                <Smartphone className="w-7 h-7 text-[#E2136E]" />
-              </div>
+              <img 
+                src={paymentLogos} 
+                alt="bKash Logo" 
+                className="w-14 h-14 rounded-xl object-cover"
+              />
               <div>
                 <h3 className="font-bold text-2xl text-foreground">bKash Payment</h3>
                 <p className="text-muted-foreground">Merchant Account: 01332-147787</p>
@@ -74,9 +77,11 @@ const BillPayment = () => {
           {/* Nagad Payment Section */}
           <div className="bg-card p-6 md:p-8 rounded-2xl border border-border mb-12">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 bg-[#F6921E]/10 rounded-xl flex items-center justify-center">
-                <CreditCard className="w-7 h-7 text-[#F6921E]" />
-              </div>
+              <img 
+                src={paymentLogos} 
+                alt="Nagad Logo" 
+                className="w-14 h-14 rounded-xl object-cover"
+              />
               <div>
                 <h3 className="font-bold text-2xl text-foreground">Nagad Payment</h3>
                 <p className="text-muted-foreground">Merchant Account: 01332-147787</p>
