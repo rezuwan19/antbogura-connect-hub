@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Loader2, Shield, Key } from "lucide-react";
+import { Loader2, Shield, Key, Laptop, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity-logger";
-import TrustedDevicePrompt from "./TrustedDevicePrompt";
 
 interface TwoFactorVerifyProps {
   userId: string;
@@ -20,8 +20,77 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
   const [code, setCode] = useState("");
   const [recoveryCode, setRecoveryCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [showTrustPrompt, setShowTrustPrompt] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
   const { toast } = useToast();
+
+  const generateDeviceToken = (): string => {
+    return Array.from({ length: 64 }, () =>
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 62)]
+    ).join("");
+  };
+
+  const getDeviceInfo = () => {
+    const ua = navigator.userAgent;
+    let deviceName = "Unknown Device";
+    let browser = "Unknown";
+    let os = "Unknown";
+
+    if (/iPhone/.test(ua)) deviceName = "iPhone";
+    else if (/iPad/.test(ua)) deviceName = "iPad";
+    else if (/Android/.test(ua)) deviceName = "Android Device";
+    else if (/Windows/.test(ua)) deviceName = "Windows PC";
+    else if (/Mac/.test(ua)) deviceName = "Mac";
+    else if (/Linux/.test(ua)) deviceName = "Linux PC";
+
+    if (/Chrome/.test(ua) && !/Edge/.test(ua)) browser = "Chrome";
+    else if (/Firefox/.test(ua)) browser = "Firefox";
+    else if (/Safari/.test(ua) && !/Chrome/.test(ua)) browser = "Safari";
+    else if (/Edge/.test(ua)) browser = "Edge";
+
+    if (/Windows NT 10/.test(ua)) os = "Windows 10/11";
+    else if (/Mac OS X/.test(ua)) os = "macOS";
+    else if (/Android/.test(ua)) os = "Android";
+    else if (/iOS|iPhone|iPad/.test(ua)) os = "iOS";
+    else if (/Linux/.test(ua)) os = "Linux";
+
+    return { deviceName, browser, os };
+  };
+
+  const saveAsTrustedDevice = async () => {
+    try {
+      const deviceToken = generateDeviceToken();
+      const { deviceName, browser, os } = getDeviceInfo();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const { error } = await supabase.from("trusted_devices").insert({
+        user_id: userId,
+        device_token: deviceToken,
+        device_name: deviceName,
+        browser,
+        os,
+        expires_at: expiresAt.toISOString(),
+      });
+
+      if (error) throw error;
+
+      localStorage.setItem(`trusted_device_${userId}`, deviceToken);
+
+      await logActivity({
+        userId,
+        eventType: "device_trusted",
+        description: `Trusted ${deviceName} (${browser} on ${os}) for 30 days`,
+      });
+
+      toast({
+        title: "Device Trusted",
+        description: "This device will skip 2FA for 30 days",
+      });
+    } catch (error: any) {
+      console.error("Error trusting device:", error);
+    }
+  };
 
   const handleVerifyTotp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +130,16 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
         description: "Logged in with 2FA (authenticator app)",
       });
 
-      setShowTrustPrompt(true);
+      setVerificationSuccess(true);
+
+      if (rememberDevice) {
+        await saveAsTrustedDevice();
+      }
+
+      // Short delay to show success state
+      setTimeout(() => {
+        onSuccess();
+      }, 500);
     } catch (error: any) {
       console.error("Error verifying 2FA:", error);
       await logActivity({
@@ -84,7 +162,7 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
     const data = encoder.encode(code.replace(/-/g, "").toUpperCase());
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
   };
 
   const handleVerifyRecovery = async (e: React.FormEvent) => {
@@ -104,7 +182,6 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
     try {
       const codeHash = await hashCode(cleanCode);
 
-      // Find and validate the recovery code
       const { data: codes, error: fetchError } = await supabase
         .from("recovery_codes")
         .select("id")
@@ -119,7 +196,6 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
         throw new Error("Invalid or already used recovery code");
       }
 
-      // Mark code as used
       const { error: updateError } = await supabase
         .from("recovery_codes")
         .update({ used: true, used_at: new Date().toISOString() })
@@ -138,7 +214,15 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
         description: "Consider generating new recovery codes in Settings",
       });
 
-      setShowTrustPrompt(true);
+      setVerificationSuccess(true);
+
+      if (rememberDevice) {
+        await saveAsTrustedDevice();
+      }
+
+      setTimeout(() => {
+        onSuccess();
+      }, 500);
     } catch (error: any) {
       console.error("Error verifying recovery code:", error);
       await logActivity({
@@ -156,20 +240,20 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
     }
   };
 
-  if (showTrustPrompt) {
+  if (verificationSuccess) {
     return (
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-green-500" />
+        <CardContent className="pt-8 pb-8">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-10 h-10 text-green-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-green-600">Verification Successful</h3>
+              <p className="text-muted-foreground mt-1">Redirecting to dashboard...</p>
+            </div>
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
-          <CardTitle className="text-2xl">Verification Successful</CardTitle>
-          <CardDescription>
-            Would you like to trust this device?
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TrustedDevicePrompt userId={userId} onContinue={onSuccess} />
         </CardContent>
       </Card>
     );
@@ -182,9 +266,7 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
           <Shield className="w-6 h-6 text-primary" />
         </div>
         <CardTitle className="text-2xl">Two-Factor Authentication</CardTitle>
-        <CardDescription>
-          Verify your identity to continue
-        </CardDescription>
+        <CardDescription>Verify your identity to continue</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="authenticator" className="w-full">
@@ -216,6 +298,25 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
                   autoFocus
                 />
               </div>
+
+              {/* Remember Device Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-3">
+                  <Laptop className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <Label htmlFor="remember-device" className="cursor-pointer font-medium">
+                      Remember this device
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Skip 2FA for 30 days</p>
+                  </div>
+                </div>
+                <Switch
+                  id="remember-device"
+                  checked={rememberDevice}
+                  onCheckedChange={setRememberDevice}
+                />
+              </div>
+
               <Button type="submit" className="w-full" disabled={isVerifying || code.length !== 6}>
                 {isVerifying ? (
                   <>
@@ -241,10 +342,27 @@ const TwoFactorVerify = ({ userId, onSuccess, onCancel }: TwoFactorVerifyProps) 
                   onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
                   className="text-center text-xl tracking-widest font-mono"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Use one of your saved recovery codes
-                </p>
+                <p className="text-xs text-muted-foreground">Use one of your saved recovery codes</p>
               </div>
+
+              {/* Remember Device Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-3">
+                  <Laptop className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <Label htmlFor="remember-device-recovery" className="cursor-pointer font-medium">
+                      Remember this device
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Skip 2FA for 30 days</p>
+                  </div>
+                </div>
+                <Switch
+                  id="remember-device-recovery"
+                  checked={rememberDevice}
+                  onCheckedChange={setRememberDevice}
+                />
+              </div>
+
               <Button type="submit" className="w-full" disabled={isVerifying}>
                 {isVerifying ? (
                   <>

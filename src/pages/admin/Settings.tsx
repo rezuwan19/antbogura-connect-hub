@@ -1114,13 +1114,22 @@ const Settings = () => {
                 {/* Trusted Devices */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Laptop className="w-5 h-5" />
-                      Trusted Devices
-                    </CardTitle>
-                    <CardDescription>
-                      Devices that can skip 2FA verification for 30 days
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Laptop className="w-5 h-5" />
+                          Trusted Devices
+                        </CardTitle>
+                        <CardDescription>
+                          Devices that can skip 2FA verification for 30 days
+                        </CardDescription>
+                      </div>
+                      {trustedDevices.length > 0 && (
+                        <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+                          {trustedDevices.length} device{trustedDevices.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {isLoadingTrusted ? (
@@ -1128,23 +1137,69 @@ const Settings = () => {
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
                       </div>
                     ) : trustedDevices.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">No trusted devices</p>
+                      <div className="text-center py-8 space-y-2">
+                        <Laptop className="w-12 h-12 mx-auto text-muted-foreground/50" />
+                        <p className="text-muted-foreground">No trusted devices</p>
+                        <p className="text-xs text-muted-foreground">
+                          When you log in with 2FA, you can choose to trust your device for 30 days
+                        </p>
+                      </div>
                     ) : (
                       <div className="space-y-3">
-                        {trustedDevices.map((device) => (
-                          <div key={device.id} className="flex items-center justify-between p-3 rounded-lg border">
-                            <div>
-                              <p className="font-medium">{device.device_name}</p>
-                              <p className="text-sm text-muted-foreground">{device.browser} on {device.os}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Expires: {format(new Date(device.expires_at), "PP")}
-                              </p>
+                        {trustedDevices.map((device) => {
+                          const isExpired = new Date(device.expires_at) < new Date();
+                          const daysLeft = Math.max(0, Math.ceil((new Date(device.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                          const isCurrentDevice = localStorage.getItem(`trusted_device_${user?.id}`) === device.device_token;
+                          
+                          return (
+                            <div 
+                              key={device.id} 
+                              className={`flex items-center justify-between p-4 rounded-lg border ${
+                                isCurrentDevice ? "border-primary/50 bg-primary/5" : ""
+                              } ${isExpired ? "opacity-60" : ""}`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                  isCurrentDevice ? "bg-primary/10" : "bg-muted"
+                                }`}>
+                                  <Laptop className={`w-5 h-5 ${isCurrentDevice ? "text-primary" : "text-muted-foreground"}`} />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">{device.device_name}</p>
+                                    {isCurrentDevice && (
+                                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">
+                                        This device
+                                      </span>
+                                    )}
+                                    {isExpired && (
+                                      <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded">
+                                        Expired
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {device.browser} on {device.os}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {isExpired 
+                                      ? `Expired ${format(new Date(device.expires_at), "PP")}`
+                                      : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining • Expires ${format(new Date(device.expires_at), "PP")}`
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10" 
+                                onClick={() => handleRemoveTrustedDevice(device.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveTrustedDevice(device.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
