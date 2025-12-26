@@ -1,8 +1,7 @@
 import Layout from "@/components/layout/Layout";
 import { CheckCircle, Copy, Check } from "lucide-react";
 import paymentInfoImage from "@/assets/payment-info.jpg";
-import bkashLogo from "@/assets/bkash-logo.svg";
-import nagadLogo from "@/assets/nagad-logo.svg";
+import paymentLogos from "@/assets/payment-logos.jpg";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -74,7 +73,7 @@ const BillPayment = () => {
           <div className="bg-card p-6 md:p-8 rounded-2xl border border-border mb-8">
             <div className="flex items-center gap-4 mb-6">
               <img 
-                src={bkashLogo} 
+                src={paymentLogos} 
                 alt="bKash Logo" 
                 className="w-14 h-14 rounded-xl object-cover"
               />
@@ -140,7 +139,7 @@ const BillPayment = () => {
           <div className="bg-card p-6 md:p-8 rounded-2xl border border-border mb-12">
             <div className="flex items-center gap-4 mb-6">
               <img 
-                src={nagadLogo} 
+                src={paymentLogos} 
                 alt="Nagad Logo" 
                 className="w-14 h-14 rounded-xl object-cover"
               />
