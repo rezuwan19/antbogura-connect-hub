@@ -1,9 +1,57 @@
 import Layout from "@/components/layout/Layout";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Copy, Check } from "lucide-react";
 import paymentInfoImage from "@/assets/payment-info.jpg";
 import paymentLogos from "@/assets/payment-logos.jpg";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const BillPayment = () => {
+  const [copied, setCopied] = useState(false);
+  const merchantNumber = "01332-147787";
+
+  const copyMerchantNumber = () => {
+    navigator.clipboard.writeText(merchantNumber);
+    setCopied(true);
+    toast.success("Merchant number copied!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const faqs = [
+    {
+      question: "What is the merchant number for ANT Bogura?",
+      answer: "The merchant number for both bKash and Nagad payments is 01332-147787."
+    },
+    {
+      question: "What should I enter as the reference?",
+      answer: "Enter your Customer ID as the reference. This helps us identify your payment and update your account."
+    },
+    {
+      question: "How long does it take for my payment to reflect?",
+      answer: "Payments are usually processed within 1-2 hours. If your payment doesn't reflect within 24 hours, please contact our support team with your TrxID."
+    },
+    {
+      question: "I made a payment but entered the wrong Customer ID. What should I do?",
+      answer: "Please contact our support team immediately via WhatsApp at +880 1332-147787 with your TrxID and correct Customer ID."
+    },
+    {
+      question: "Can I pay for multiple months at once?",
+      answer: "Yes, you can pay for multiple months. Just enter the total amount for all months you want to pay."
+    },
+    {
+      question: "What if my payment fails?",
+      answer: "If your payment fails, the amount will be refunded to your bKash/Nagad account within 24-48 hours. If not, contact bKash/Nagad customer support."
+    },
+    {
+      question: "Is there any additional charge for mobile payment?",
+      answer: "No, there is no additional charge for paying via bKash or Nagad."
+    }
+  ];
   return (
     <Layout>
       {/* Hero */}
@@ -29,9 +77,22 @@ const BillPayment = () => {
                 alt="bKash Logo" 
                 className="w-14 h-14 rounded-xl object-cover"
               />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold text-2xl text-foreground">bKash Payment</h3>
-                <p className="text-muted-foreground">Merchant Account: 01332-147787</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-muted-foreground">Merchant Account: {merchantNumber}</p>
+                  <button
+                    onClick={copyMerchantNumber}
+                    className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                    title="Copy merchant number"
+                  >
+                    {copied ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -82,9 +143,22 @@ const BillPayment = () => {
                 alt="Nagad Logo" 
                 className="w-14 h-14 rounded-xl object-cover"
               />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold text-2xl text-foreground">Nagad Payment</h3>
-                <p className="text-muted-foreground">Merchant Account: 01332-147787</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-muted-foreground">Merchant Account: {merchantNumber}</p>
+                  <button
+                    onClick={copyMerchantNumber}
+                    className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                    title="Copy merchant number"
+                  >
+                    {copied ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -167,6 +241,27 @@ const BillPayment = () => {
                 <span>For any payment issues, contact us on WhatsApp: +880 1332-147787</span>
               </li>
             </ul>
+          </div>
+
+          {/* FAQ Section */}
+          <div className="mt-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6 text-center">
+              Frequently Asked Questions
+            </h2>
+            <div className="bg-card p-6 md:p-8 rounded-2xl border border-border">
+              <Accordion type="single" collapsible className="w-full">
+                {faqs.map((faq, index) => (
+                  <AccordionItem key={index} value={`item-${index}`}>
+                    <AccordionTrigger className="text-left text-foreground hover:text-primary">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
           </div>
         </div>
       </section>
