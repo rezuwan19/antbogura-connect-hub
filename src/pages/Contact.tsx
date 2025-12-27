@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Phone, Mail, MapPin, MessageCircle, Send, Clock, Wifi, AlertTriangle, Github } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle, Send, Clock, Wifi, AlertTriangle } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contact = () => {
   const [simpleFormData, setSimpleFormData] = useState({
@@ -14,6 +15,7 @@ const Contact = () => {
     email: "",
     message: "",
   });
+  const [isSubmittingSimple, setIsSubmittingSimple] = useState(false);
 
   const [problemFormData, setProblemFormData] = useState({
     name: "",
@@ -22,28 +24,113 @@ const Contact = () => {
     problemType: "",
     description: "",
   });
+  const [isSubmittingProblem, setIsSubmittingProblem] = useState(false);
 
-  const handleSimpleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Message sent successfully! We'll get back to you soon.");
-    setSimpleFormData({
-      name: "",
-      phone: "",
-      email: "",
-      message: "",
-    });
+  const sendSms = async (phone: string, message: string, recordId: string, tableName: string) => {
+    try {
+      await supabase.functions.invoke("send-sms", {
+        body: { phone, message, type: "form_submission", recordId, tableName },
+      });
+    } catch (error) {
+      console.error("SMS sending failed:", error);
+    }
   };
 
-  const handleProblemSubmit = (e: React.FormEvent) => {
+  const handleSimpleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Problem reported successfully! Our team will contact you shortly.");
-    setProblemFormData({
-      name: "",
-      phone: "",
-      customerId: "",
-      problemType: "",
-      description: "",
-    });
+    setIsSubmittingSimple(true);
+
+    try {
+      const recordId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : ([1e7] as any +-1e3 +-4e3 +-8e3 +-1e11).replace(/[018]/g, (c: any) =>
+              (
+                c ^
+                ((typeof crypto !== "undefined" && crypto.getRandomValues
+                  ? crypto.getRandomValues(new Uint8Array(1))[0]
+                  : Math.random() * 256) &
+                  (15 >> (c / 4)))
+              ).toString(16)
+            );
+
+      const { error } = await supabase.from("contact_messages").insert({
+        id: recordId,
+        name: simpleFormData.name,
+        phone: simpleFormData.phone,
+        email: simpleFormData.email || null,
+        message: simpleFormData.message,
+      });
+
+      if (error) throw error;
+
+      // Send SMS to customer (fire-and-forget so the form stays fast)
+      void sendSms(
+        simpleFormData.phone,
+        `ধন্যবাদ ${simpleFormData.name}! আপনার মেসেজ পেয়েছি। শীঘ্রই যোগাযোগ করব। - ANT Bogura`,
+        recordId,
+        "contact_messages"
+      );
+
+      toast.success("Message sent successfully! We'll get back to you soon.");
+      setSimpleFormData({ name: "", phone: "", email: "", message: "" });
+    } catch (error: any) {
+      console.error("Contact form submit error:", error);
+      const message =
+        typeof error?.message === "string" ? error.message : "Failed to send message. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmittingSimple(false);
+    }
+  };
+
+  const handleProblemSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingProblem(true);
+
+    try {
+      const recordId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : ([1e7] as any +-1e3 +-4e3 +-8e3 +-1e11).replace(/[018]/g, (c: any) =>
+              (
+                c ^
+                ((typeof crypto !== "undefined" && crypto.getRandomValues
+                  ? crypto.getRandomValues(new Uint8Array(1))[0]
+                  : Math.random() * 256) &
+                  (15 >> (c / 4)))
+              ).toString(16)
+            );
+
+      const { error } = await supabase.from("problem_reports").insert({
+        id: recordId,
+        name: problemFormData.name,
+        phone: problemFormData.phone,
+        customer_id: problemFormData.customerId || null,
+        problem_type: problemFormData.problemType,
+        description: problemFormData.description,
+      });
+
+      if (error) throw error;
+
+      // Send SMS to customer (fire-and-forget so the form stays fast)
+      void sendSms(
+        problemFormData.phone,
+        `${problemFormData.name}, আপনার সমস্যা রিপোর্ট পেয়েছি। আমাদের টিম শীঘ্রই সমাধান করবে। - ANT Bogura`,
+        recordId,
+        "problem_reports"
+      );
+
+      toast.success("Problem reported successfully! Our team will contact you shortly.");
+      setProblemFormData({ name: "", phone: "", customerId: "", problemType: "", description: "" });
+    } catch (error: any) {
+      console.error("Problem report submit error:", error);
+      const message =
+        typeof error?.message === "string" ? error.message : "Failed to report problem. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmittingProblem(false);
+    }
   };
 
   const handleSimpleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -138,20 +225,6 @@ const Contact = () => {
                   </div>
                 </div>
 
-                <a
-                  href="https://github.com/antbogura"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4 p-5 bg-card rounded-xl border border-border hover:border-foreground hover:shadow-lg transition-all group"
-                >
-                  <div className="w-14 h-14 bg-foreground/10 rounded-xl flex items-center justify-center group-hover:bg-foreground transition-colors">
-                    <Github className="w-7 h-7 text-foreground group-hover:text-background transition-colors" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">GitHub</p>
-                    <p className="text-muted-foreground">github.com/antbogura</p>
-                  </div>
-                </a>
 
                 <div className="flex items-center gap-4 p-5 bg-card rounded-xl border border-border">
                   <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
@@ -258,9 +331,13 @@ const Contact = () => {
                         />
                       </div>
 
-                      <Button type="submit" variant="hero" size="xl" className="w-full">
-                        <Send className="w-5 h-5" />
-                        Send Message
+                      <Button type="submit" variant="hero" size="xl" className="w-full" disabled={isSubmittingSimple}>
+                        {isSubmittingSimple ? "Sending..." : (
+                          <>
+                            <Send className="w-5 h-5" />
+                            Send Message
+                          </>
+                        )}
                       </Button>
                     </form>
                   </TabsContent>
@@ -355,9 +432,13 @@ const Contact = () => {
                         />
                       </div>
 
-                      <Button type="submit" variant="hero" size="xl" className="w-full">
-                        <Wifi className="w-5 h-5" />
-                        Report Problem
+                      <Button type="submit" variant="hero" size="xl" className="w-full" disabled={isSubmittingProblem}>
+                        {isSubmittingProblem ? "Submitting..." : (
+                          <>
+                            <Wifi className="w-5 h-5" />
+                            Report Problem
+                          </>
+                        )}
                       </Button>
                     </form>
                   </TabsContent>

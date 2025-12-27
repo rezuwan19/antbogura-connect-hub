@@ -1,0 +1,10 @@
+project_id = "wtdjlfwzakgwdallsiii"
+
+[functions.send-sms]
+verify_jwt = false
+
+[functions.setup-admin]
+verify_jwt = false
+
+[functions.update-user-role]
+verify_jwt = false

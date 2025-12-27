@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ConnectionRequestDialogProps {
   open: boolean;
@@ -56,12 +57,55 @@ const ConnectionRequestDialog = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const sendSms = async (phone: string, message: string, recordId: string) => {
+    try {
+      await supabase.functions.invoke("send-sms", {
+        body: { phone, message, type: "form_submission", recordId, tableName: "connection_requests" },
+      });
+    } catch (error) {
+      console.error("SMS sending failed:", error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate submission
-    setTimeout(() => {
+    try {
+      const recordId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : ([1e7] as any +-1e3 +-4e3 +-8e3 +-1e11).replace(/[018]/g, (c: any) =>
+              (
+                c ^
+                ((typeof crypto !== "undefined" && crypto.getRandomValues
+                  ? crypto.getRandomValues(new Uint8Array(1))[0]
+                  : Math.random() * 256) &
+                  (15 >> (c / 4)))
+              ).toString(16)
+            );
+
+      const { error } = await supabase.from("connection_requests").insert({
+        id: recordId,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email || null,
+        district: formData.district,
+        upazila: formData.upazila,
+        address: formData.address,
+        message: formData.message || null,
+        package_name: selectedPackage || null,
+      });
+
+      if (error) throw error;
+
+      // Send SMS to customer (fire-and-forget so submit stays fast)
+      void sendSms(
+        formData.phone,
+        `ধন্যবাদ ${formData.name}! আপনার কানেকশন রিকোয়েস্ট পেয়েছি${selectedPackage ? ` (${selectedPackage})` : ""}। ২৪ ঘন্টার মধ্যে যোগাযোগ করব। - ANT Bogura`,
+        recordId
+      );
+
       toast.success("Connection request submitted successfully! We'll contact you soon.");
       setFormData({
         name: "",
@@ -72,9 +116,15 @@ const ConnectionRequestDialog = ({
         address: "",
         message: "",
       });
-      setIsSubmitting(false);
       onOpenChange(false);
-    }, 1000);
+    } catch (error: any) {
+      console.error("Connection request submit error:", error);
+      const message =
+        typeof error?.message === "string" ? error.message : "Failed to submit request. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (

@@ -8,6 +8,7 @@ const navLinks = [
   { name: "Packages", path: "/packages" },
   { name: "Coverage", path: "/coverage" },
   { name: "FTP & Live TV", path: "/ftp-live-tv" },
+  { name: "Bill Payment", path: "/bill-payment" },
   { name: "About", path: "/about" },
   { name: "Support", path: "/support" },
   { name: "Contact", path: "/contact" },
