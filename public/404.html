@@ -8,13 +8,24 @@
   </head>
   <body>
     <script>
-      // GitHub Pages serves this file for unknown paths.
-      // Redirect to the SPA entry, preserving the path in the hash.
+      // GitHub Pages serves this file for unknown paths (e.g. /repo/packages).
+      // Redirect to the SPA entry, preserving the path inside the hash for HashRouter.
       (function () {
         var l = window.location;
-        var path = l.pathname.replace(/\/index\.html$/, "");
-        var target = l.origin + path + "/#" + (l.pathname + l.search + l.hash);
-        l.replace(target);
+        var segments = l.pathname.split("/").filter(Boolean);
+        var username = l.hostname.split(".")[0];
+
+        // For project pages: https://username.github.io/repo/...
+        // For user/org pages: https://username.github.io/...
+        var isProjectPages =
+          l.hostname.endsWith("github.io") &&
+          segments.length > 0 &&
+          segments[0] !== username;
+
+        var base = isProjectPages ? "/" + segments[0] : "";
+        var appPath = l.pathname.slice(base.length) || "/";
+
+        l.replace(l.origin + base + "/#" + appPath + l.search);
       })();
     </script>
   </body>
